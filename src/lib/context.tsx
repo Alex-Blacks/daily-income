@@ -1,6 +1,18 @@
 import { useEffect, createContext, useContext, useState, ReactNode } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+export type OvertimeEntry = {
+    id: string;
+    date: string;
+    hoursOvertime: number;
+    rateOvertime: number;
+}
+
+type Cursor = {
+    year: number;
+    month: number;
+}
+
 type AppContextValue = {
     rate: string;
     setRate: (r: string) => void;
@@ -8,8 +20,11 @@ type AppContextValue = {
     setHoursPerDay: (h: string) => void;
     workDays: number[];
     setWorkDays: (w: number[]) => void;
-    cursor: {year: number, month: number};
-    setCursor: (c: any) => void;
+    cursor: Cursor;
+    setCursor: (c: Cursor) => void;
+    overtime: OvertimeEntry[];
+    addOvertime: (entry: Omit<OvertimeEntry, 'id'>) => void;
+    removeOvertime: (id: string) => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -23,7 +38,17 @@ export function AppProvider({ children }: { children:ReactNode }) {
         const now = new Date();
         return { year: now.getFullYear(), month: now.getMonth()}
     });
-    
+    const [overtime, setOvertime] = useState<OvertimeEntry[]>([]);
+
+    function addOvertime(entry: Omit<OvertimeEntry, 'id'>) {
+        const newEntry = { ...entry, id: Date.now().toString()};
+        setOvertime(prev => [...prev,newEntry]);
+    }
+
+    function removeOvertime(id:string) {
+        setOvertime(prev => prev.filter(o => o.id !== id));
+    }
+
     useEffect(() => {
         (async () => {
         const getRate = await AsyncStorage.getItem('rate')
@@ -35,6 +60,9 @@ export function AppProvider({ children }: { children:ReactNode }) {
         const getDays = await AsyncStorage.getItem('workDays')
         if (getDays !== null) setWorkDays(JSON.parse(getDays))
 
+        const getOvertime = await AsyncStorage.getItem('overtime')
+        if (getOvertime !== null) setOvertime(JSON.parse(getOvertime))
+
         setLoaded(true)
         })();
     },[]);
@@ -44,10 +72,11 @@ export function AppProvider({ children }: { children:ReactNode }) {
         AsyncStorage.setItem('rate', rate);
         AsyncStorage.setItem('hoursPerDay', hoursPerDay);
         AsyncStorage.setItem('workDays', JSON.stringify(workDays));
-    },[rate, hoursPerDay, workDays, loaded]);
+        AsyncStorage.setItem('overtime', JSON.stringify(overtime));
+    },[rate, hoursPerDay, workDays, overtime, loaded]);
 
     return (
-        <AppContext.Provider value={{rate, setRate, hoursPerDay, setHoursPerDay, workDays, setWorkDays, cursor, setCursor}}>
+        <AppContext.Provider value={{ rate, setRate, hoursPerDay, setHoursPerDay, workDays, setWorkDays, cursor, setCursor, overtime, addOvertime, removeOvertime }}>
             {children}
         </AppContext.Provider>
     )
@@ -58,4 +87,3 @@ export function useApp() {
     if (!ctx) throw new Error ('useApp must be used inside AppProvider');
     return ctx;
 }
-

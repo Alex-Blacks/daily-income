@@ -1,5 +1,6 @@
 import { StyleSheet, TouchableOpacity, View, Text, TextInput } from "react-native";
-import { useApp } from "../lib/context";
+import { useApp } from "../../lib/context";
+import { common, chips } from '../../lib/styles';
 
 const WEEK_LABELS = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс',]
 
@@ -15,46 +16,36 @@ export default function SettingsScreen() {
     }
 
     return (
-        <View style={styles.container}>
-            <Text style={styles.label}>Тариф:</Text>
+        <View style={common.container}>
+            <Text style={common.label}>Тариф:</Text>
             <TextInput 
-                style={styles.input} 
+                style={common.input} 
                 value={rate} 
                 onChangeText={setRate} 
                 placeholder="Например, 500"
                 keyboardType="decimal-pad"
             />
 
-            <Text style={styles.label}>Часы:</Text>
+            <Text style={common.label}>Часы:</Text>
             <TextInput 
-                style={styles.input} 
+                style={common.input} 
                 value={hoursPerDay} 
                 onChangeText={setHoursPerDay} 
                 placeholder="Например, 8"
                 keyboardType="decimal-pad"
             />
-            <Text style={styles.label}>Рабочие дни:</Text>
-            <View style={styles.row}>
+            <Text style={common.label}>Рабочие дни:</Text>
+            <View style={common.row}>
             {WEEK_LABELS.map((label, index) => (
                 <TouchableOpacity 
                     key={label}
                     onPress={() => toggleDay(index)}
-                    style={[styles.button, workDays.includes(index) && styles.buttonActive]}
+                    style={[chips.chip, workDays.includes(index) && chips.chipActive]}
                 >
-                    <Text style={styles.buttonText}>{label}</Text>
+                    <Text style={chips.chipText}>{label}</Text>
             </TouchableOpacity>
             ))}
             </View>
         </View>
     );
 }
-
-const styles = StyleSheet.create({
-    container: { flex: 1, padding: 24, justifyContent: 'center', backgroundColor: '#fff' },
-    label: { fontSize: 16, marginBottom: 8, color: '#333' },
-    input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 12, fontSize: 18, marginBottom: 10 },
-    row: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
-    button: { backgroundColor: 'gray', padding: 12, borderRadius: 8, marginTop: 12, alignItems: 'center' },
-    buttonActive: { backgroundColor: 'blue'},
-    buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-})
