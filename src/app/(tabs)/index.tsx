@@ -1,101 +1,115 @@
-import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
-import { Link, router} from 'expo-router';
-import { useApp } from '../../lib/context';
-import { makeDateKey, MONTH_LABELS } from '../../lib/dates';
+import { useMemo } from 'react';
+import { Text, View, TouchableOpacity } from 'react-native';
+import { router} from 'expo-router';
+import { Cursor, useApp } from '../../lib/context';
+import { MONTHS, WEEKDAYS_SHORT, getMonthGrid, toKey, todayKey,  } from '../../lib/dates';
 import { common, calendar } from '../../lib/styles';
 
-
-function buildMonthGrid(year:number, month:number) {
-    let calendar:(number | null)[] = [];
-    const offset = (new Date(year, month, 1).getDay() + 6) % 7;
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    for (let i = 0; i < 6; i++){
-        for (let j = 0; j < 7; j++){
-            const cellIndex = i * 7 + j;
-            if (cellIndex < offset) {
-                calendar.push(null);
-            } else {
-                const dayNumber = cellIndex - offset + 1
-                if (dayNumber <= daysInMonth) {
-                    calendar.push(dayNumber);
-                } else {
-                    calendar.push(null);
-                }
-            }
-        }
-    }
-    return calendar
-}
-
+const formatShort = (n: number) => (n >= 1000 ? `${Math.round(n/100)/10}k` : `${Math.round(n)}`);
 
 export default function CalendarScreen() {
-    const { rate, setRate, hoursPerDay, setHoursPerDay, workDays, setWorkDays, cursor, setCursor} = useApp();
-    const cells = buildMonthGrid(cursor.year, cursor.month);
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth();
-    const currentDay = now.getDate();
+    const { settings, overtime, cursor, setCursor } = useApp();
+    const today = todayKey();
 
-    const shiftMonth = (delta: number) => {
-        let newMonth = cursor.month + delta;
-        let newYear = cursor.year;
-        if (newMonth > 11) {
-            newMonth = 0;
-            newYear += 1;
-        } else if (newMonth < 0) {
-            newMonth = 11;
-            newYear -= 1;
+    const overtimeByDate = useMemo(() => {
+        const m = new Map<string, { hours: number, income: number}>();
+        for (const e of overtime) {
+            const current = m.get(e.date) ?? { hours: 0, income: 0}
+            m.set(e.date, {
+                hours: current.hours + e.hours,
+                income: current.income + (e.hours * e.rate),
+            });
         }
-        setCursor({year: newYear, month: newMonth});
-    }
+        return m;
+    },[overtime]);
 
-    const isToday = (day: (number|null)) => {
-        return (cursor.year == currentYear && cursor.month == currentMonth && day == currentDay)
-    }
-
+    const cells = useMemo(() => getMonthGrid(cursor.year, cursor.month),[cursor]);
+    const shiftMonth = (delta: number) =>
+        setCursor((c:Cursor) => {
+            const m = c.month + delta
+            if (m<0) return {year: c.year - 1, month: 11}
+            if (m>11) return {year: c.year + 1, month: 0}
+            return {year: c.year, month: m}
+        });
+    
     const income = () => {
-        return parseFloat(rate) * parseFloat(hoursPerDay);
+        return (settings.rate * settings.hoursPerDay) || 0;
     }
 
-    const isWorkDay = (index: number) => {
-        return workDays.includes(index % 7)
+    const isWorkDay = (day: number) => {
+        return settings.workDays.includes((new Date(cursor.year, cursor.month, day).getDay() + 6) % 7)
     }
+
+    const monthlyAmountOvertime = useMemo(() => {
+        const requiredMonth = String(cursor.year) + "-" + String(cursor.month+1).padStart(2,"0")
+        const filteredOvertime = overtime.filter((data) => data.date.startsWith(requiredMonth))
+        return filteredOvertime.reduce((total,data) => {
+            return total + (data.hours * data.rate)
+        },0)
+    },[cursor, overtime])
+
+    const monthlyAmount = useMemo(() => {
+        const countDay = new Date(cursor.year, cursor.month + 1, 0).getDate();
+        let sumMonth = 0;
+        for (let i = 1; i <= countDay; i++) {
+            isWorkDay(i) ? sumMonth += income() : sumMonth += 0;
+        }
+        return sumMonth;
+    },[cursor, settings.workDays, settings.rate, settings.hoursPerDay])
 
     return (
         <View style={common.container}>
-            <View style={calendar.header}>
-                <TouchableOpacity style={calendar.arrow} onPress={() => shiftMonth(-1)}>
-                    <Text style={calendar.arrowText}>‹</Text>
-                </TouchableOpacity>
-                <Text style={calendar.monthTitle}>{MONTH_LABELS[cursor.month]} {cursor.year}</Text>
-                <Text style={calendar.monthTitle}></Text>
-                <TouchableOpacity style={calendar.arrow} onPress={() => shiftMonth(+1)}>
-                    <Text style={calendar.arrowText}>›</Text>
-                </TouchableOpacity>
+            <View style={{flexDirection: 'column', paddingHorizontal: 'auto'}}>
+                <View style={calendar.header}>
+                    <TouchableOpacity style={calendar.arrow} onPress={() => shiftMonth(-1)}>
+                        <Text style={calendar.arrowText}>‹</Text>
+                    </TouchableOpacity>
+                    <Text style={calendar.monthTitle}>{MONTHS[cursor.month]} {cursor.year}</Text>
+                    <TouchableOpacity style={calendar.arrow} onPress={() => shiftMonth(+1)}>
+                        <Text style={calendar.arrowText}>›</Text>
+                    </TouchableOpacity>
+                </View>
+                <View style={{alignItems:'center'}}>
+                    <Text style={[calendar.dayIncome]}>{(monthlyAmount + monthlyAmountOvertime).toLocaleString('ru-RU', { maximumFractionDigits: 0}) || 0} ₽</Text>
+                </View>
             </View>
             <View style={calendar.weekdaysRow}>
-                {['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].map(w => (
+                {WEEKDAYS_SHORT.map(w => (
                     <Text key={w} style={calendar.weekday}>{w}</Text>
                 ))}
             </View>
             <View style={calendar.grid}>
-                {cells.map((dayNumber, index) => (
-                    <View key={index} style={calendar.cellWrap}>
-                        {dayNumber !== null && (
-                            <TouchableOpacity 
-                                onPress={() => router.push('/day/'+ makeDateKey(cursor.year, cursor.month, dayNumber))} 
-                                style={[calendar.cell, isToday(dayNumber) && calendar.cellToday]}
-                            >
-                                <View>
-                                    <Text style={calendar.dayNumber}>{dayNumber}</Text>
-                                    {isWorkDay(index) && (
-                                        <Text style={calendar.dayIncome}>{income() || 0} ₽</Text>
+                {cells.map((date, i) => {
+                    if (!date) return <View key={i} style={calendar.cellWrap}/>;
+                    const key = toKey(date);
+                    const jsDay = (date.getDay() + 6) % 7;
+                    const isWorkDay = (settings.workDays.includes(jsDay))
+                    const base = isWorkDay ? income() : 0;
+                    const ot = overtimeByDate.get(key) ?? { hours: 0, income: 0};
+                    const total = base + ot.income;
+                    const isToday = key === today;
+
+                    return (
+                        <View key={i} style={calendar.cellWrap}>
+                            <View style={[isToday && { borderColor: '#007aff', borderRadius: 9, borderWidth: 2}]}>
+                                <TouchableOpacity
+                                    style={calendar.cell}
+                                    onPress={() => router.push(`/day/${key}`)}
+                                >
+                                    <Text style={calendar.dayNumber}>{date.getDate()}</Text>
+                                    {total > 0 && (
+                                        <Text style={calendar.dayIncome} numberOfLines={1}>
+                                            {formatShort(total)}
+                                        </Text>
                                     )}
-                                </View>
-                            </TouchableOpacity>
-                        )}
-                    </View>
-                ))}
+                                    {ot.hours > 0 && (
+                                        <Text style={[calendar.arrowText, { fontSize: 12}]}>+{ot.hours}ч</Text>
+                                    )}
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    );
+                })}
             </View>
         </View>
     );

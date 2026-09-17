@@ -1,21 +1,22 @@
 import { useState } from "react";
 import { Text, TextInput, TouchableOpacity, View } from "react-native";
 import { router, Stack, useLocalSearchParams } from "expo-router";
-import { useApp, OvertimeEntry } from "../../../lib/context";
+import { useApp } from "../../../lib/context";
+import { OvertimeEntry } from "../../../lib/storage";
 import { common } from '../../../lib/styles';
 
 
 export default function OvertimeNewScreen() {
-    const { rate, hoursPerDay, addOvertime } = useApp();
+    const { settings, addOvertime } = useApp();
     const {date} = useLocalSearchParams<{ date: string }>();
-    const [ entryHoursOvertime, setHoursOvertime ] = useState('1'); 
-    const [ entryRateOvertime, setRateOvertime ] = useState(rate)
+    const [ entryHoursOvertime, setHoursOvertime ] = useState(1); 
+    const [ entryRateOvertime, setRateOvertime ] = useState(settings.rate)
 
     const clickSave = () => {
         const entry:(Omit<OvertimeEntry, 'id'>) = {
             date: date,
-            hoursOvertime: Number(entryHoursOvertime),
-            rateOvertime: Number(entryRateOvertime),
+            hours: Number(entryHoursOvertime),
+            rate: Number(entryRateOvertime),
         }
         addOvertime(entry)
         router.back()
@@ -31,17 +32,17 @@ export default function OvertimeNewScreen() {
             <Text style={common.label}>Дата: {date}</Text>
             <Text style={common.label}> Часов переработки</Text>
             <TextInput
-                value={entryHoursOvertime}
-                onChangeText={setHoursOvertime}
-                placeholder= {hoursPerDay}
+                value={String(entryHoursOvertime)}
+                onChangeText={(t) => setHoursOvertime(Number(t) || 0)}
+                placeholder= {String(settings.hoursPerDay)}
                 keyboardType="decimal-pad"
                 style={common.input}
             /> 
             <Text style={common.label}>Ставка,₽/час</Text>
             <TextInput 
-                value={entryRateOvertime}
-                onChangeText={setRateOvertime}
-                placeholder={rate}
+                value={String(entryRateOvertime)}
+                onChangeText={(t) => setRateOvertime(Number(t) || 0)}
+                placeholder={String(settings.rate)}
                 keyboardType="decimal-pad"
                 style={common.input}
             />

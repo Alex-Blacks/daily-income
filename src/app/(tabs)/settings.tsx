@@ -1,17 +1,16 @@
 import { StyleSheet, TouchableOpacity, View, Text, TextInput } from "react-native";
 import { useApp } from "../../lib/context";
 import { common, chips } from '../../lib/styles';
-
-const WEEK_LABELS = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс',]
+import { WEEKDAYS_SHORT } from '../../lib/dates';
 
 export default function SettingsScreen() {
-    const { rate, setRate, hoursPerDay, setHoursPerDay, workDays, setWorkDays } = useApp();
+    const { settings, updateSettings } = useApp();
     
     const toggleDay = (day:number) => {
-        if (workDays.includes(day)) {
-            setWorkDays(workDays.filter(d => d !== day));
+        if (settings.workDays.includes(day)) {
+            updateSettings({workDays: settings.workDays.filter(d => d !== day)});
         } else {
-            setWorkDays([...workDays, day]);
+            updateSettings({workDays: [...settings.workDays, day]});
         }
     }
 
@@ -20,8 +19,8 @@ export default function SettingsScreen() {
             <Text style={common.label}>Тариф:</Text>
             <TextInput 
                 style={common.input} 
-                value={rate} 
-                onChangeText={setRate} 
+                value={String(settings.rate)} 
+                onChangeText={(t) => updateSettings({rate: Number(t) || 0})} 
                 placeholder="Например, 500"
                 keyboardType="decimal-pad"
             />
@@ -29,18 +28,18 @@ export default function SettingsScreen() {
             <Text style={common.label}>Часы:</Text>
             <TextInput 
                 style={common.input} 
-                value={hoursPerDay} 
-                onChangeText={setHoursPerDay} 
+                value={String(settings.hoursPerDay)} 
+                onChangeText={(t) => updateSettings({hoursPerDay: Number(t) || 0})} 
                 placeholder="Например, 8"
                 keyboardType="decimal-pad"
             />
             <Text style={common.label}>Рабочие дни:</Text>
             <View style={common.row}>
-            {WEEK_LABELS.map((label, index) => (
+            {WEEKDAYS_SHORT.map((label, index) => (
                 <TouchableOpacity 
                     key={label}
                     onPress={() => toggleDay(index)}
-                    style={[chips.chip, workDays.includes(index) && chips.chipActive]}
+                    style={[chips.chip, settings.workDays.includes(index) && chips.chipActive]}
                 >
                     <Text style={chips.chipText}>{label}</Text>
             </TouchableOpacity>

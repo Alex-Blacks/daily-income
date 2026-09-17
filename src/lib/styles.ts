@@ -88,9 +88,9 @@ export const common = StyleSheet.create({
 export const calendar = StyleSheet.create({
     header: {
         flexDirection: 'row',
-        alignItems: 'center',
+        alignItems: 'flex-end',
         justifyContent: 'space-between',
-        paddingHorizontal: 16,
+        //paddingHorizontal: 16,
         paddingBottom: 12,
     },
     monthTitle: {

@@ -1,46 +1,46 @@
-import { StyleSheet, Text, View, TouchableOpacity } from "react-native";
+import { Text, View, TouchableOpacity } from "react-native";
 import { router, Stack, useLocalSearchParams } from "expo-router";
-import { parseDateKey, MONTH_LABELS_FOR_DAYS } from "../../lib/dates";
+import { fromKey, MONTH_FOR_DAYS } from "../../lib/dates";
 import { useApp } from "../../lib/context";
 import { common } from '../../lib/styles';
 
+const money = (n: number) => `${n.toFixed(2)} ₽`;
+
 export default function DayScreen() {
-    const { rate, hoursPerDay, workDays, overtime, addOvertime, removeOvertime } = useApp();
-    const {date} = useLocalSearchParams<{ date: string }>();
-    const [year, month, day] = parseDateKey(date);
-    const screenName = day + ' ' + MONTH_LABELS_FOR_DAYS[month-1] + ' ' + year;
-    const basicIncome = `${hoursPerDay || 0} ч × ${rate || 0} ₽ = ${Number(rate) * Number(hoursPerDay)} ₽`;
+    const { date } = useLocalSearchParams<{ date: string }>();
+    const { settings, overtime, removeOvertime } = useApp();
+    const d = fromKey(date);
+    const jsDay = (d.getDay() + 6) % 7;
+    const isWorkDay = settings.workDays.includes(jsDay);
+    const baseHours = isWorkDay ? settings.hoursPerDay : 0;
+    const baseIncome = baseHours * settings.rate;
 
-    const isWorkDay = () => {
-        return workDays.includes((new Date(year,month-1,day).getDay() + 6)%7)
-    }
+    const otEntries = overtime.filter(e => e.date === date);
+    const otHours = otEntries.reduce((s,e) => s + e.hours,0) || 0;
+    const otIncome = otEntries.reduce((s, e) => s + e.hours * e.rate, 0) || 0;
+    const total = baseIncome + otIncome;
 
-    const calculationOvertime = (rateOvertime:number, hoursOvertime: number) => {
-        return `${hoursOvertime} ч × ${rateOvertime} ₽ = ${hoursOvertime * rateOvertime} ₽`
-    }
-    
-    const dayOvertime = overtime.filter(o => o.date == date)
     return (
         <>
-        <Stack.Screen options={{ title: screenName}}/>
+        <Stack.Screen options={{ title: `${d.getDate()} ${MONTH_FOR_DAYS[d.getMonth()]}`}}/>
         <View style={common.container}>
-            {isWorkDay() ? (
-                <View>
-                    <Text style={common.label}>Рабочий день</Text>
-                    <Text style={common.label}>{basicIncome}</Text>
-                </View>
-            ):(
-                <Text style={common.label}>Выходной</Text>
-            )}
+            <Text style={common.label}>
+                {isWorkDay ? 'Рабочий день' : 'Выходной' }
+            </Text>
+            <Text style={common.label}>
+                {baseHours} ч × {settings.rate || 0} ₽ = {money(baseIncome)}
+            </Text>
             <View>
                 <Text style={common.label}>Переработка</Text>
-                {dayOvertime.length === 0 ? (
+                {otEntries.length === 0 ? (
                     <Text style={common.label}>Нет записей</Text>
                 ) : (
-                    dayOvertime.map((label) => (
-                        <View style={common.container} key={label.id}>
-                            <Text style={common.label}>{calculationOvertime(label.rateOvertime, label.hoursOvertime)}</Text>
-                            <TouchableOpacity style={common.buttonDanger} onPress={() => removeOvertime(label.id)}>
+                    otEntries.map((e) => (
+                        <View key={e.id}>
+                            <Text style={common.label}>
+                                {e.hours} ч × {e.rate} ₽ = {money(e.hours * e.rate)}
+                            </Text>
+                            <TouchableOpacity style={common.buttonDanger} onPress={() => removeOvertime(e.id)}>
                                 <Text style={common.buttonText}>Удалить</Text>
                             </TouchableOpacity>
                         </View>
@@ -52,7 +52,10 @@ export default function DayScreen() {
                 </TouchableOpacity>
             </View>
         </View>
+        <View style={{ padding: 10, alignItems: 'center', backgroundColor: '#007aff' }}>
+            <Text style={{ color: '#fff', fontSize: 13, opacity: 0.9 }}>Итого за день</Text>
+            <Text style={{ color: '#fff', fontSize: 32, fontWeight: 'bold', marginTop: 4 }}>{money(total)}</Text>
+        </View>
         </>
     )
 }
-

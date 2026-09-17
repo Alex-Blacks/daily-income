@@ -1,89 +1,84 @@
-import { useEffect, createContext, useContext, useState, ReactNode } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useEffect, createContext, useContext, useState, ReactNode, useMemo } from "react";
+import { useColorScheme } from "react-native";
+import { Settings, OvertimeEntry, defaultSettings, loadSettings, saveSettings, loadOvertime, saveOvertime } from "./storage";
+import { Colors, darkColors, lightColors } from "./theme";
 
-export type OvertimeEntry = {
-    id: string;
-    date: string;
-    hoursOvertime: number;
-    rateOvertime: number;
-}
-
-type Cursor = {
+export type Cursor = {
     year: number;
     month: number;
-}
+};
 
-type AppContextValue = {
-    rate: string;
-    setRate: (r: string) => void;
-    hoursPerDay: string;
-    setHoursPerDay: (h: string) => void;
-    workDays: number[];
-    setWorkDays: (w: number[]) => void;
-    cursor: Cursor;
-    setCursor: (c: Cursor) => void;
+type Ctx = {
+    ready: boolean;
+    settings: Settings;
+    updateSettings: (patch: Partial<Settings>) => void;
+
     overtime: OvertimeEntry[];
     addOvertime: (entry: Omit<OvertimeEntry, 'id'>) => void;
     removeOvertime: (id: string) => void;
-}
 
-const AppContext = createContext<AppContextValue | null>(null);
+    cursor: Cursor;
+    setCursor: React.Dispatch<React.SetStateAction<Cursor>>;
+    colors: Colors;
+    isDark: boolean;
+};
+
+const AppCtx = createContext<Ctx | null>(null);
 
 export function AppProvider({ children }: { children:ReactNode }) {
-    const [loaded, setLoaded] = useState(false);
-    const [rate, setRate] = useState('');
-    const [hoursPerDay, setHoursPerDay] = useState('');
-    const [workDays, setWorkDays] = useState([0,1,2,3,4]);
-    const [cursor, setCursor] = useState(() => {
-        const now = new Date();
-        return { year: now.getFullYear(), month: now.getMonth()}
-    });
-    const [overtime, setOvertime] = useState<OvertimeEntry[]>([]);
-
-    function addOvertime(entry: Omit<OvertimeEntry, 'id'>) {
-        const newEntry = { ...entry, id: Date.now().toString()};
-        setOvertime(prev => [...prev,newEntry]);
-    }
-
-    function removeOvertime(id:string) {
-        setOvertime(prev => prev.filter(o => o.id !== id));
-    }
+    const system = useColorScheme();
+    const [ ready, setReady ] = useState(false);
+    const [ settings, setSettings ] = useState<Settings>(defaultSettings);
+    const [ overtime, setOvertime ] = useState<OvertimeEntry[]>([]);
+    const [ cursor, setCursor ] = useState(() => {
+            const d = new Date();
+            return { year: d.getFullYear(), month: d.getMonth()}
+        });
 
     useEffect(() => {
         (async () => {
-        const getRate = await AsyncStorage.getItem('rate')
-        if (getRate !== null) setRate(getRate)
-
-        const getHours = await AsyncStorage.getItem('hoursPerDay')
-        if (getHours !== null) setHoursPerDay(getHours)
-
-        const getDays = await AsyncStorage.getItem('workDays')
-        if (getDays !== null) setWorkDays(JSON.parse(getDays))
-
-        const getOvertime = await AsyncStorage.getItem('overtime')
-        if (getOvertime !== null) setOvertime(JSON.parse(getOvertime))
-
-        setLoaded(true)
+            const [s, o] = await Promise.all([loadSettings(), loadOvertime()]);
+            setSettings(s);
+            setOvertime(o);
+            setReady(true);
         })();
     },[]);
 
     useEffect(() => {
-        if (!loaded) return;
-        AsyncStorage.setItem('rate', rate);
-        AsyncStorage.setItem('hoursPerDay', hoursPerDay);
-        AsyncStorage.setItem('workDays', JSON.stringify(workDays));
-        AsyncStorage.setItem('overtime', JSON.stringify(overtime));
-    },[rate, hoursPerDay, workDays, overtime, loaded]);
+        if (!ready) return;
+        saveSettings(settings)
+        saveOvertime(overtime)
+    },[settings, overtime, ready]);
+
+    const updateSettings = (patch: Partial<Settings>) => {
+        setSettings(prev =>  ({...prev, ...patch}));
+    }
+
+    const addOvertime = (entry: Omit<OvertimeEntry, 'id'>) => {
+        setOvertime(prev => [...prev, {...entry, id: String(Date.now())}]);
+    }
+
+    const removeOvertime = (id:string) => {
+        setOvertime(prev => prev.filter(o => o.id !== id));
+    }
+
+    const isDark = settings.theme === 'dark' || (settings.theme === 'auto' && system === 'dark');
+    const colors = isDark ? darkColors : lightColors; 
+
+    const value = useMemo(
+        () => ({ ready, settings, updateSettings, overtime, addOvertime, removeOvertime, cursor, setCursor, colors, isDark }),
+        [ready, settings,overtime, cursor, colors, isDark],
+    )
 
     return (
-        <AppContext.Provider value={{ rate, setRate, hoursPerDay, setHoursPerDay, workDays, setWorkDays, cursor, setCursor, overtime, addOvertime, removeOvertime }}>
+        <AppCtx.Provider value={value}>
             {children}
-        </AppContext.Provider>
+        </AppCtx.Provider>
     )
 }
 
 export function useApp() {
-    const ctx = useContext(AppContext)
+    const ctx = useContext(AppCtx)
     if (!ctx) throw new Error ('useApp must be used inside AppProvider');
     return ctx;
 }
