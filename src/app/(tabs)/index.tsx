@@ -3,12 +3,13 @@ import { Text, View, TouchableOpacity } from 'react-native';
 import { router} from 'expo-router';
 import { Cursor, useApp } from '../../lib/context';
 import { MONTHS, WEEKDAYS_SHORT, getMonthGrid, toKey, todayKey,  } from '../../lib/dates';
-import { common, calendar } from '../../lib/styles';
+import { useStyles} from '../../lib/styles';
 
 const formatShort = (n: number) => (n >= 1000 ? `${Math.round(n/100)/10}k` : `${Math.round(n)}`);
 
 export default function CalendarScreen() {
-    const { settings, overtime, cursor, setCursor } = useApp();
+    const { settings, overtime, cursor, setCursor, colors } = useApp();
+    const styles = useStyles();
     const today = todayKey();
 
     const overtimeByDate = useMemo(() => {
@@ -57,30 +58,38 @@ export default function CalendarScreen() {
         return sumMonth;
     },[cursor, settings.workDays, settings.rate, settings.hoursPerDay])
 
+    const monthTotal = (monthlyAmount + monthlyAmountOvertime) || 0;
+
     return (
-        <View style={common.container}>
-            <View style={{flexDirection: 'column', paddingHorizontal: 'auto'}}>
-                <View style={calendar.header}>
-                    <TouchableOpacity style={calendar.arrow} onPress={() => shiftMonth(-1)}>
-                        <Text style={calendar.arrowText}>‹</Text>
-                    </TouchableOpacity>
-                    <Text style={calendar.monthTitle}>{MONTHS[cursor.month]} {cursor.year}</Text>
-                    <TouchableOpacity style={calendar.arrow} onPress={() => shiftMonth(+1)}>
-                        <Text style={calendar.arrowText}>›</Text>
-                    </TouchableOpacity>
+        <>
+        <View style={[styles.calendar.container, { backgroundColor: colors.background}]}>
+            <View style={styles.calendar.header}>
+                <TouchableOpacity onPress={() => shiftMonth(-1)} style={styles.calendar.navBtn} >
+                    <Text style={[styles.calendar.navBtnText, { color: colors.primary }]}>‹</Text>
+                </TouchableOpacity>
+                <View style={{ alignItems: 'center'}}>
+                    <Text style={[styles.calendar.monthLabel, { color: colors.text}]}>
+                        {MONTHS[cursor.month]} {cursor.year}
+                    </Text>
+                    <Text style={[styles.calendar.monthTotal, { color: colors.accent}]}>
+                        {monthTotal.toLocaleString('ru-RU', { maximumFractionDigits: 0})} ₽
+                    </Text>
                 </View>
-                <View style={{alignItems:'center'}}>
-                    <Text style={[calendar.dayIncome]}>{(monthlyAmount + monthlyAmountOvertime).toLocaleString('ru-RU', { maximumFractionDigits: 0}) || 0} ₽</Text>
-                </View>
+                <TouchableOpacity onPress={() => shiftMonth(+1)} style={styles.calendar.navBtn} >
+                    <Text style={[styles.calendar.navBtnText, { color: colors.primary }]}>›</Text>
+                </TouchableOpacity>
             </View>
-            <View style={calendar.weekdaysRow}>
+
+            <View style={styles.calendar.weekdaysRow}>
                 {WEEKDAYS_SHORT.map(w => (
-                    <Text key={w} style={calendar.weekday}>{w}</Text>
+                    <Text key={w} style={[styles.calendar.weekday, { color: colors.textMuted }]}>{w}</Text>
                 ))}
             </View>
-            <View style={calendar.grid}>
+
+            <View style={styles.calendar.grid}>
                 {cells.map((date, i) => {
-                    if (!date) return <View key={i} style={calendar.cellWrap}/>;
+                    if (!date) return <View key={i} style={styles.calendar.cellWrap}/>;
+
                     const key = toKey(date);
                     const jsDay = (date.getDay() + 6) % 7;
                     const isWorkDay = (settings.workDays.includes(jsDay))
@@ -90,27 +99,30 @@ export default function CalendarScreen() {
                     const isToday = key === today;
 
                     return (
-                        <View key={i} style={calendar.cellWrap}>
-                            <View style={[isToday && { borderColor: '#007aff', borderRadius: 9, borderWidth: 2}]}>
-                                <TouchableOpacity
-                                    style={calendar.cell}
-                                    onPress={() => router.push(`/day/${key}`)}
-                                >
-                                    <Text style={calendar.dayNumber}>{date.getDate()}</Text>
-                                    {total > 0 && (
-                                        <Text style={calendar.dayIncome} numberOfLines={1}>
-                                            {formatShort(total)}
-                                        </Text>
-                                    )}
-                                    {ot.hours > 0 && (
-                                        <Text style={[calendar.arrowText, { fontSize: 12}]}>+{ot.hours}ч</Text>
-                                    )}
-                                </TouchableOpacity>
-                            </View>
+                        <View key={i} style={styles.calendar.cellWrap}>
+                            <TouchableOpacity
+                                style={[
+                                    styles.calendar.cell,
+                                    { backgroundColor: colors.card },
+                                    isToday && { borderColor: colors.primary, borderWidth: 2},
+                                ]}
+                                onPress={() => router.push(`/day/${key}` as any)}
+                            >
+                                <Text style={[styles.calendar.dayNum, { color: colors.text }]}>{date.getDate()}</Text>
+                                {total > 0 && (
+                                    <Text style={[styles.calendar.income, { color: colors.accent}]} numberOfLines={1}>
+                                        {formatShort(total)}
+                                    </Text>
+                                )}
+                                {ot.hours > 0 && (
+                                    <Text style={[styles.calendar.ot, { color: colors.primary}]}>+{ot.hours}ч</Text>
+                                )}
+                            </TouchableOpacity>
                         </View>
                     );
                 })}
+                </View>
             </View>
-        </View>
+        </>
     );
 }

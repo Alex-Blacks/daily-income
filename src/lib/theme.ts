@@ -1,4 +1,5 @@
 export type ThemeName = 'light' | 'dark' | 'auto';
+export const THEME_LABELS: Record<ThemeName, string> = { light: 'Светлая', dark: 'Тёмная', auto: 'Авто' };
 
 export type Colors = {
     background: string;

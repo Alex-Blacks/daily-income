@@ -1,175 +1,254 @@
 import { StyleSheet } from 'react-native';
+import { Colors } from './theme';
+import { useApp } from './context';
+import { useMemo } from 'react';
 
-// Палитра — если захочешь тёмную тему, поменяешь здесь
-export const colors = {
-    bg: '#f2f4f7',
-    card: '#ffffff',
-    text: '#111111',
-    muted: '#6b7280',
-    border: '#cccccc',
-    primary: '#007aff',
-    accent: '#34c759',
-    danger: '#ff3b30',
-    disabled: '#cccccc',
-};
+export const makeStyles = (colors: Colors) => ({
+    calendar: StyleSheet.create({
+        container: { 
+            flex: 1 
+        },
+        header: {
+            flexDirection: 'row', 
+            alignItems: 'center', 
+            justifyContent: 'space-between',
+            paddingHorizontal: 16, 
+            paddingVertical: 8,
+        },
+        navBtn: { 
+            padding: 8 
+        },
+        navBtnText: { 
+            fontSize: 34, 
+            lineHeight: 34, 
+            fontWeight: '300' 
+        },
+        monthLabel: { 
+            fontSize: 18, 
+            fontWeight: '600' 
+        },
+        monthTotal: { 
+            fontSize: 13, 
+            fontWeight: '600', 
+            marginTop: 2 
+        },
+        weekdaysRow: { 
+            flexDirection: 'row', 
+            paddingHorizontal: 4 
+        },
+        weekday: { 
+            flex: 1, 
+            textAlign: 'center', 
+            fontSize: 12, 
+            fontWeight: '600' 
+        },
+        grid: { 
+            flexDirection: 'row', 
+            flexWrap: 'wrap', 
+            paddingHorizontal: 4, 
+            paddingTop: 4 
+        },
+        cellWrap: { 
+            width: `${100 / 7}%`, 
+            padding: 2 
+        },
+        cell: {
+            minHeight: 60,
+            borderRadius: 10,
+            padding: 6,
+            borderWidth: 2,
+            borderColor: 'transparent',
+        },
+        dayNum: { 
+            fontSize: 14, 
+            fontWeight: '600' 
+        },
+        income: { 
+            fontSize: 11, 
+            fontWeight: '600', 
+            marginTop: 2 
+        },
+        ot: { 
+            fontSize: 10, 
+            marginTop: 1 
+        },
+        fab: {
+            position: 'absolute', 
+            right: 20, 
+            bottom: 24,
+            width: 56, 
+            height: 56, 
+            borderRadius: 28,
+            alignItems: 'center', 
+            justifyContent: 'center',
+            shadowColor: '#000', 
+            shadowOpacity: 0.25, 
+            shadowRadius: 8, 
+            shadowOffset: { 
+                width: 0, 
+                height: 4 
+            },
+            elevation: 6,
+        },
+        fabText: { 
+            color: '#fff', 
+            fontSize: 32, 
+            lineHeight: 34, 
+            fontWeight: '300' 
+        },
+    }),
+    settings: StyleSheet.create({
+        container: { 
+            padding: 16 
+        },
+        sectionTitle: {
+            fontSize: 12, 
+            fontWeight: '700', 
+            textTransform: 'uppercase',
+            letterSpacing: 0.5, 
+            marginTop: 16, 
+            marginBottom: 8,
+        },
+        card: { 
+            borderWidth: 1, 
+            borderRadius: 12, 
+            padding: 16 
+        },
+        label: { 
+            fontSize: 13, 
+            marginBottom: 6 
+        },
+        input: { 
+            borderWidth: 1, 
+            borderRadius: 8, 
+            padding: 10, 
+            fontSize: 16 
+        },
+        row: { 
+            flexDirection: 'row', 
+            gap: 6, 
+            flexWrap: 'wrap' 
+        },
+        chip: { 
+            paddingHorizontal: 12, 
+            paddingVertical: 8, 
+            borderWidth: 1, 
+            borderRadius: 8, 
+            minWidth: 44, 
+            alignItems: 'center' 
+        },
+        chipWide: { 
+            flex: 1 
+        },
+        footer: { 
+            fontSize: 12, 
+            textAlign: 'center', 
+            marginTop: 24 
+        },
+    }),
+    day: StyleSheet.create({
+        container: { 
+            padding: 16, 
+            gap: 12 
+        },
+        card: { 
+            borderWidth: 1, 
+            borderRadius: 12, 
+            padding: 16 
+        },
+        label: { 
+            fontSize: 12, 
+            fontWeight: '700', 
+            textTransform: 'uppercase', 
+            marginBottom: 8 
+        },
+        formula: { 
+            fontSize: 16 
+        },
+        otRow: { 
+            flexDirection: 'row', 
+            alignItems: 'center', 
+            paddingVertical: 8 
+        },
+        addBtn: { 
+            marginTop: 12, 
+            padding: 12, 
+            borderWidth: 1, 
+            borderRadius: 8, 
+            alignItems: 'center' 
+        },
+        totalCard: { 
+            borderRadius: 12, 
+            padding: 20, 
+            alignItems: 'center' 
+        },
+        totalLabel: { 
+            color: '#fff', 
+            fontSize: 13, 
+            opacity: 0.9 
+        },
+        totalValue: { 
+            color: '#fff', 
+            fontSize: 32, 
+            fontWeight: 'bold',
+            marginTop: 4 
+        },
+        subtotal: { 
+            borderTopWidth: 1, 
+            paddingTop: 8, 
+            marginTop: 4, 
+            alignItems: 'flex-end' 
+        },
+    }),
+    overtime: StyleSheet.create({
+        container: { 
+            padding: 16 
+        },
+        label: { 
+            fontSize: 13, 
+            fontWeight: '600', 
+            marginBottom: 6 
+        },
+        input: { 
+            borderWidth: 1, 
+            borderRadius: 8, 
+            padding: 12, 
+            fontSize: 16 
+        },
+        saveBtn: { 
+            marginTop: 24, 
+            padding: 14, 
+            borderRadius: 10, 
+            alignItems: 'center' 
+        },
+        saveBtnText: { 
+            color: '#fff', 
+            fontSize: 16, 
+            fontWeight: '600' 
+        },
+        chipsRow: { 
+            flexDirection: 'row', 
+            gap: 8, 
+            marginTop: 8 
+        },
+        chip: {
+            flex: 1, 
+            paddingVertical: 10, 
+            borderWidth: 1, 
+            borderRadius: 8,
+            alignItems: 'center',
+        },
+        preview: {
+            marginTop: 20, 
+            padding: 16, 
+            borderRadius: 10, 
+            borderWidth: 1,
+            alignItems: 'center',
+        },
+    }),
+})
 
-// Общие стили — контейнер, поля, кнопки, лейблы
-export const common = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: colors.bg,
-        paddingTop: 20,
-    },
-    content: {
-        padding: 16,
-        gap: 8,
-    },
-    label: {
-        fontSize: 16,
-        marginBottom: 8,
-        color: colors.text,
-    },
-    labelMuted: {
-        fontSize: 13,
-        color: colors.muted,
-    },
-    input: {
-        borderWidth: 1,
-        borderColor: colors.border,
-        borderRadius: 8,
-        padding: 12,
-        fontSize: 18,
-        backgroundColor: colors.card,
-        color: colors.text,
-    },
-    row: {
-        flexDirection: 'row',
-        gap: 6,
-        flexWrap: 'wrap',
-    },
-    button: {
-        backgroundColor: colors.primary,
-        padding: 12,
-        borderRadius: 8,
-        marginTop: 12,
-        alignItems: 'center',
-    },
-    buttonSecondary: {
-        backgroundColor: colors.muted,
-        padding: 12,
-        borderRadius: 8,
-        marginTop: 12,
-        alignItems: 'center',
-    },
-    buttonDanger: {
-        backgroundColor: colors.danger,
-        padding: 12,
-        borderRadius: 8,
-        alignItems: 'center',
-    },
-    buttonDisabled: {
-        backgroundColor: colors.disabled,
-    },
-    buttonText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    footer: {
-        flexDirection: 'row',
-        marginTop: 'auto',
-        justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        paddingBottom: 12,
-    },
-});
-
-// Только для календаря
-export const calendar = StyleSheet.create({
-    header: {
-        flexDirection: 'row',
-        alignItems: 'flex-end',
-        justifyContent: 'space-between',
-        //paddingHorizontal: 16,
-        paddingBottom: 12,
-    },
-    monthTitle: {
-        fontSize: 20,
-        fontWeight: '600',
-        color: colors.text,
-    },
-    arrow: {
-        padding: 8,
-    },
-    arrowText: {
-        fontSize: 28,
-        color: colors.primary,
-        fontWeight: '300',
-    },
-    weekdaysRow: {
-        flexDirection: 'row',
-        paddingHorizontal: 8,
-    },
-    weekday: {
-        width: `${100 / 7}%`,
-        textAlign: 'center',
-        fontSize: 12,
-        color: colors.muted,
-        fontWeight: '600',
-        paddingVertical: 6,
-    },
-    grid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        paddingHorizontal: 8,
-    },
-    cellWrap: {
-        width: `${100 / 7}%`,
-        padding: 2,
-    },
-    cell: {
-        minHeight: 56,
-        backgroundColor: colors.card,
-        borderRadius: 8,
-        padding: 6,
-        borderWidth: 2,
-        borderColor: 'transparent',
-    },
-    cellToday: {
-        borderColor: colors.primary,
-    },
-    dayNumber: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: colors.text,
-    },
-    dayIncome: {
-        fontSize: 11,
-        color: colors.accent,
-        marginTop: 2,
-    },
-});
-
-// Чипы-переключатели (рабочие дни в настройках, тема и т.п.)
-export const chips = StyleSheet.create({
-    chip: {
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-        borderWidth: 1,
-        borderColor: colors.border,
-        borderRadius: 8,
-        alignItems: 'center',
-        minWidth: 44,
-    },
-    chipActive: {
-        backgroundColor: colors.primary,
-        borderColor: colors.primary,
-    },
-    chipText: {
-        color: colors.text,
-        fontWeight: '600',
-    },
-    chipTextActive: {
-        color: '#ffffff',
-    },
-});
+export function useStyles() {
+    const { colors } = useApp();
+    return useMemo(() => makeStyles(colors),[colors])
+}
