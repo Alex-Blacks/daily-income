@@ -3,7 +3,7 @@ import { router, Stack, useLocalSearchParams } from "expo-router";
 import { fromKey, MONTH_FOR_DAYS} from "../../lib/dates";
 import { useApp } from "../../lib/context";
 import { useStyles } from '../../lib/styles';
-import { MinutesToParts } from "../../lib/time";
+import { MinutesToHHMM, MinutesToParts } from "../../lib/time";
 
 const money = (n: number) => `${n.toFixed(2)} ₽`;
 
@@ -19,7 +19,6 @@ export default function DayScreen() {
 
     const otEntries = overtime.filter(e => e.date === date);
     const otMinutes = otEntries.reduce((s, e) => s + e.minutes, 0);
-    const otHours = otEntries.reduce((s, e) => s + (Math.floor(e.minutes / 60)), 0);
     const otIncome = otEntries.reduce((s, e) => s + (e.minutes / 60) * e.rate, 0) || 0;
     const total = baseIncome + otIncome;
 
@@ -37,7 +36,7 @@ export default function DayScreen() {
                 {isWorkDays ? 'Рабочий день' : 'Выходной' }
             </Text>
             <Text style={[styles.day.formula, { color: colors.text}]}>
-                {baseHours} ч × {settings.rate || 0} ₽ = {money(baseIncome)}
+                {MinutesToHHMM(String(baseHours))} × {settings.rate || 0} ₽ = {money(baseIncome)}
             </Text>
         </View>
             <View style={[ styles.day.card, { backgroundColor: colors.card, borderColor: colors.border}]}>

@@ -21,5 +21,5 @@ export const MinutesToParts = (m: number):[number,number] => {
 }
 
 export const MinutesToHHMM = (minutes: string):string => {
-    return `${MinutesToParts(Number(minutes))[0]}:${MinutesToParts(Number(minutes))[1]}`
+    return `${String(MinutesToParts(Number(minutes))[0]).padStart(2, '0')}:${String(MinutesToParts(Number(minutes))[1]).padStart(2, '0')}`
 }

@@ -103,7 +103,7 @@ export function AppProvider({ children }: { children:ReactNode }) {
 
     const value = useMemo(
         () => ({ ready, settings, isWorkDay, updateSettings, overtime, addOvertime, removeOvertime, exception, addException, removeException, cursor, setCursor, colors, isDark }),
-        [ready, settings,overtime, cursor, colors, isDark],
+        [ready, settings,overtime, exception, cursor, colors, isDark],
     )
 
     return (

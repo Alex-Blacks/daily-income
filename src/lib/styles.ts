@@ -290,6 +290,14 @@ export const makeStyles = (colors: Colors) => ({
             alignItems: 'center',
         },
     }),
+    typeField: StyleSheet.create({
+        input: { 
+            borderWidth: 1, 
+            borderRadius: 8, 
+            padding: 10, 
+            fontSize: 16 
+        },
+    })
 })
 
 export function useStyles() {

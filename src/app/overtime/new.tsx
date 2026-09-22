@@ -51,7 +51,7 @@ export default function OvertimeNewScreen() {
             </Text>
             <NumberField 
                 value={String(rateOt)}
-                onCommit={() => String(setRateOt)}
+                onCommit={(n) => String(setRateOt(Number(n)))}
                 placeholder="500"
                 colors={colors}
             />

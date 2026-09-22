@@ -13,6 +13,7 @@ export type Settings = {
     startDate: string | null;
     workDays: number[];
     dayRules: ShortDay[];
+    isEnableRules: boolean;
     theme: ThemeName;
 };
 
@@ -36,6 +37,7 @@ export const defaultSettings: Settings = {
     startDate: null,
     workDays: [0, 1, 2, 3, 4],
     dayRules: [],
+    isEnableRules: false,
     theme: 'auto',
 }
 
