@@ -1,13 +1,18 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ThemeName } from "./theme";
+import { ScheduleMonth, ShortDay } from "./dates";
 
 const SETTINGS_KEY = 'daily-income:settings';
 const OVERTIME_KEY = 'daily-income:overtime';
+const EXCEPTION_KEY = 'daily-income:exception';
 
 export type Settings = {
     rate: number;
-    hoursPerDay: number;
+    minutesPerDay: number;
+    schedule: ScheduleMonth;
+    startDate: string | null;
     workDays: number[];
+    dayRules: ShortDay[];
     theme: ThemeName;
 };
 
@@ -15,13 +20,22 @@ export type OvertimeEntry = {
     id: string;
     date: string;
     rate: number;
-    hours: number;
+    minutes: number;
 };
+
+export type Exceptions = {
+    id: string;
+    date: string;
+    minutes: number;
+}
 
 export const defaultSettings: Settings = {
     rate: 500,
-    hoursPerDay: 8,
+    minutesPerDay: 480,
+    schedule: '5/2',
+    startDate: null,
     workDays: [0, 1, 2, 3, 4],
+    dayRules: [],
     theme: 'auto',
 }
 
@@ -49,4 +63,17 @@ export const loadOvertime = async ():Promise<OvertimeEntry[]> => {
 
 export const saveOvertime = (entries: OvertimeEntry[]) => {
     AsyncStorage.setItem(OVERTIME_KEY, JSON.stringify(entries));
+}
+
+export const loadException = async ():Promise<Exceptions[]> => {
+    try {
+        const raw = await AsyncStorage.getItem(EXCEPTION_KEY);
+        return raw ? JSON.parse(raw) : [];
+    } catch {
+        return [];
+    }
+}
+
+export const saveException = (except: Exceptions[]) => {
+    AsyncStorage.setItem(EXCEPTION_KEY, JSON.stringify(except));
 }

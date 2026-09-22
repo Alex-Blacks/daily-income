@@ -145,6 +145,50 @@ export const makeStyles = (colors: Colors) => ({
             textAlign: 'center', 
             marginTop: 24 
         },
+        chipSchedule: {
+            flex: 1,
+            minWidth: 60,
+            alignItems: 'center',
+        },
+        hint: {
+            fontSize: 12,
+            marginTop: 6,
+            fontStyle: 'italic',
+        },
+        dateField: {
+            borderWidth: 1,
+            borderRadius: 8,
+            paddingHorizontal: 12,
+            paddingVertical: 14,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+        },
+        overlay: {
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: 16,
+        },
+        modalCard: {
+            width: '100%',
+            maxWidth: 420,
+            borderRadius: 16,
+            padding: 16,
+            shadowColor: '#000',
+            shadowOpacity: 0.25,
+            shadowRadius: 16,
+            shadowOffset: { width: 0, height: 8 },
+            elevation: 8,
+        },
+        closeBtn: {
+            marginTop: 12,
+            padding: 12,
+            borderRadius: 8,
+            borderWidth: 1,
+            alignItems: 'center',
+        },
     }),
     day: StyleSheet.create({
         container: { 

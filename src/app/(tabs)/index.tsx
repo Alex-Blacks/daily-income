@@ -2,29 +2,31 @@ import { useMemo } from 'react';
 import { Text, View, TouchableOpacity } from 'react-native';
 import { router} from 'expo-router';
 import { Cursor, useApp } from '../../lib/context';
-import { MONTHS, WEEKDAYS_SHORT, getMonthGrid, toKey, todayKey,  } from '../../lib/dates';
+import { MONTHS, WEEKDAYS_SHORT, getMonthGrid, toKey, todayKey } from '../../lib/dates';
 import { useStyles} from '../../lib/styles';
+import { MinutesToParts } from '../../lib/time';
 
 const formatShort = (n: number) => (n >= 1000 ? `${Math.round(n/100)/10}k` : `${Math.round(n)}`);
 
 export default function CalendarScreen() {
-    const { settings, overtime, cursor, setCursor, colors } = useApp();
+    const { settings, overtime, cursor, setCursor, colors, isWorkDay } = useApp();
     const styles = useStyles();
     const today = todayKey();
 
     const overtimeByDate = useMemo(() => {
-        const m = new Map<string, { hours: number, income: number}>();
+        const m = new Map<string, { minutes: number, income: number}>();
         for (const e of overtime) {
-            const current = m.get(e.date) ?? { hours: 0, income: 0}
+            const current = m.get(e.date) ?? { minutes: 0, income: 0}
             m.set(e.date, {
-                hours: current.hours + e.hours,
-                income: current.income + (e.hours * e.rate),
+                minutes: current.minutes + e.minutes,
+                income: current.income + ((e.minutes / 60) * e.rate),
             });
         }
         return m;
     },[overtime]);
 
     const cells = useMemo(() => getMonthGrid(cursor.year, cursor.month),[cursor]);
+    
     const shiftMonth = (delta: number) =>
         setCursor((c:Cursor) => {
             const m = c.month + delta
@@ -34,18 +36,14 @@ export default function CalendarScreen() {
         });
     
     const income = () => {
-        return (settings.rate * settings.hoursPerDay) || 0;
-    }
-
-    const isWorkDay = (day: number) => {
-        return settings.workDays.includes((new Date(cursor.year, cursor.month, day).getDay() + 6) % 7)
+        return (settings.rate * (settings.minutesPerDay / 60)) || 0;
     }
 
     const monthlyAmountOvertime = useMemo(() => {
         const requiredMonth = String(cursor.year) + "-" + String(cursor.month+1).padStart(2,"0")
         const filteredOvertime = overtime.filter((data) => data.date.startsWith(requiredMonth))
         return filteredOvertime.reduce((total,data) => {
-            return total + (data.hours * data.rate)
+            return total + ((data.minutes/60) * data.rate)
         },0)
     },[cursor, overtime])
 
@@ -53,10 +51,10 @@ export default function CalendarScreen() {
         const countDay = new Date(cursor.year, cursor.month + 1, 0).getDate();
         let sumMonth = 0;
         for (let i = 1; i <= countDay; i++) {
-            isWorkDay(i) ? sumMonth += income() : sumMonth += 0;
+            isWorkDay(toKey(new Date(cursor.year, cursor.month, i))) ? sumMonth += income() : sumMonth += 0;
         }
         return sumMonth;
-    },[cursor, settings.workDays, settings.rate, settings.hoursPerDay])
+    },[cursor, settings.workDays, settings.schedule, settings.startDate, settings.rate, settings.minutesPerDay])
 
     const monthTotal = (monthlyAmount + monthlyAmountOvertime) || 0;
 
@@ -91,12 +89,13 @@ export default function CalendarScreen() {
                     if (!date) return <View key={i} style={styles.calendar.cellWrap}/>;
 
                     const key = toKey(date);
-                    const jsDay = (date.getDay() + 6) % 7;
-                    const isWorkDay = (settings.workDays.includes(jsDay))
-                    const base = isWorkDay ? income() : 0;
-                    const ot = overtimeByDate.get(key) ?? { hours: 0, income: 0};
+                    const isWorkDays = isWorkDay(key)
+                    const base = isWorkDays ? income() : 0;
+                    const ot = overtimeByDate.get(key) ?? { minutes: 0, income: 0};
                     const total = base + ot.income;
                     const isToday = key === today;
+                    const hours = MinutesToParts(ot.minutes)[0];
+                    const minutes = MinutesToParts(ot.minutes)[1]
 
                     return (
                         <View key={i} style={styles.calendar.cellWrap}>
@@ -114,8 +113,14 @@ export default function CalendarScreen() {
                                         {formatShort(total)}
                                     </Text>
                                 )}
-                                {ot.hours > 0 && (
-                                    <Text style={[styles.calendar.ot, { color: colors.primary}]}>+{ot.hours}ч</Text>
+                                {ot.minutes > 0 && (
+                                    <Text style={[styles.calendar.ot, { color: colors.primary}]}>
+                                        {Number(hours) > 0 ? (
+                                            `+${hours}ч${minutes}м`
+                                        ) : (
+                                            `+${minutes}м`
+                                        )}
+                                    </Text>
                                 )}
                             </TouchableOpacity>
                         </View>

@@ -3,7 +3,7 @@ import { Colors } from "../lib/theme";
 import { StyleSheet, TextInput } from "react-native";
 
 const parseNum = (s: string): number => {
-    const n = parseFloat(s.replace(',','.'));
+    const n = parseFloat(s.replace(/[,:]/g,'.'));
     return Number.isFinite(n) ? n : 0;
 }
 
@@ -11,7 +11,7 @@ const formatNum = (n: number): string => String(n);
 
 type Props = {
     value: string;
-    onCommit: (n: number) => void;
+    onCommit: (n: string) => void;
     colors: Colors;
     placeholder?: string;
     autoFocus?: boolean;
@@ -25,9 +25,8 @@ export default function NumberField({ value, onCommit, colors, placeholder, auto
     },[value]);
 
     const commit = () => {
-        const n = parseNum(text);
-        setText(formatNum(n))
-        onCommit(n);
+        setText(text)
+        onCommit(text);
     };
 
     return (

@@ -3,8 +3,8 @@ import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useApp } from "../../lib/context";
 import { useStyles } from '../../lib/styles';
+import { MinutesToHHMM, ParseTimeToMinutes } from "../../lib/time";
 import NumberField from "../../components/NumberField";
-
 
 export default function OvertimeNewScreen() {
     const { date } = useLocalSearchParams<{ date: string }>();
@@ -12,17 +12,19 @@ export default function OvertimeNewScreen() {
     const styles = useStyles();
 
 
-    const [ hoursOt, setHoursOt ] = useState(''); 
+    const [ minutesOt, setMinutesOt ] = useState(''); 
     const [ rateOt, setRateOt ] = useState(settings.rate);
 
-    const parseHours = parseFloat(hoursOt) || 0
+    const parseInMinutes = parseFloat(minutesOt) || 0
 
-    const canSave = parseHours > 0 && rateOt > 0;
-    const total = parseHours * rateOt;
+    const canSave = parseInMinutes > 0 && rateOt > 0;
+    
+    const total = (parseInMinutes / 60) * rateOt;
+
 
     const save = () => {
         if (!canSave) return;
-        addOvertime({ date: date, hours: parseHours, rate: rateOt});
+        addOvertime({ date: date, minutes: parseInMinutes, rate: rateOt});
         router.back();
     }
 
@@ -37,18 +39,19 @@ export default function OvertimeNewScreen() {
                 Часов переработки
             </Text>
             <NumberField
-                value={String(hoursOt)}
-                onCommit={(n) => setHoursOt(String(n))}
+                value={MinutesToHHMM(minutesOt)}
+                onCommit={(n) => setMinutesOt(String(ParseTimeToMinutes(n)))}
                 placeholder="2"
                 colors={colors}
                 autoFocus
             /> 
+
             <Text style={[styles.overtime.label, { color: colors.textMuted, marginTop: 16}]}>
                 Ставка, ₽/час
             </Text>
             <NumberField 
                 value={String(rateOt)}
-                onCommit={setRateOt}
+                onCommit={() => String(setRateOt)}
                 placeholder="500"
                 colors={colors}
             />
