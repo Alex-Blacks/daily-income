@@ -4,16 +4,16 @@ import { useApp, Cursor } from "../../lib/context";
 import { useStyles} from '../../lib/styles';
 import { SCHEDULE_HINTS, SCHEDULE_OPTIONS, WEEKDAYS_SHORT, MONTHS, getMonthGrid, toKey, todayKey } from '../../lib/dates';
 import { ThemeName, THEME_LABELS } from "../../lib/theme";
-import NumberField, { TimeField } from "../../components/NumberField";
+import NumberField, { TimeField } from "../../components/TypeField";
 import { defaultSettings } from "../../lib/storage";
 import { MinutesToHHMM, MinutesToParts, ParseTimeToMinutes } from "../../lib/time";
 
 export default function SettingsScreen() {
     const { settings, updateSettings, colors} = useApp();
-    const [ modalVisible, setModalVisible] = useState(false);
-    const [ modalRulesVisible, setModalRulesVisible] = useState(false);
-    const [ dayOfWeek, setDayOfWeek] = useState<number[]>([]);
-    const [ time, setTime] = useState('');
+    const [ calendarVisible, setCalendarVisible] = useState(false);
+    const [ rulesVisible, setRulesVisible] = useState(false);
+    const [ pickedDays, setPickedDays] = useState<number[]>([]);
+    const [ untilMinutes, setUntilMinutes] = useState(0);
     const [ cursor, setCursor] = useState<Cursor>({ 
         year: new Date().getFullYear(), 
         month: new Date().getMonth()});
@@ -22,59 +22,92 @@ export default function SettingsScreen() {
     const flexibleSchedule =  settings.schedule === 'Свой';
     const standardSchedule = settings.schedule === '5/2';
     const showDateField = !flexibleSchedule && !standardSchedule;
-    const showRuleField = flexibleSchedule || standardSchedule;
+    const showRuleToggle = flexibleSchedule || standardSchedule;
 
     const today = useMemo(() => todayKey(),[]);
 
     const toggleWorkDay = (day:number) => {
-        if (settings.workDays.includes(day)) {
-            updateSettings({workDays: settings.workDays.filter(d => d !== day)});
-        } else {
-            updateSettings({workDays: [...settings.workDays, day]});
-        }
+        const next = settings.workDays.includes(day)
+            ? settings.workDays.filter(d => d !== day)
+            : [...settings.workDays, day].sort((a,b) => a - b);
+        updateSettings({ workDays: next});
     };
 
-    const toggleDayRules = (day: number) => {
-        if (dayOfWeek.includes(day)) {
-            setDayOfWeek(dayOfWeek.filter(d => d !== day));
-        } else {
-            setDayOfWeek([...dayOfWeek, day]);
-        }
-    }
+    const togglePickedDay = (day: number) => {
+        setPickedDays( prev => 
+            prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]
+        );
+    };
 
     const cells = useMemo(() => getMonthGrid(cursor.year, cursor.month),[cursor]);
 
     const shiftMonth = (delta: number) =>
         setCursor((c:Cursor) => {
-            const m = c.month + delta
-            if (m<0) return {year: c.year - 1, month: 11}
-            if (m>11) return {year: c.year + 1, month: 0}
-            return {year: c.year, month: m}
+            const m = c.month + delta;
+            if (m<0) return {year: c.year - 1, month: 11};
+            if (m>11) return {year: c.year + 1, month: 0};
+            return {year: c.year, month: m};
         });
 
     const selectedDay = (key: string) => {
-        updateSettings({startDate: key})
-        setModalVisible(false)
+        updateSettings({startDate: key});
+        setCalendarVisible(false);
     };
 
     const removeRules = (dayOfWeek: number) => {
-        const rect = settings.dayRules.filter(d => d.dayOfWeek !== dayOfWeek)
-        updateSettings({dayRules: [...rect,]})
+        updateSettings({
+            dayRules: settings.dayRules.filter(d => d.dayOfWeek !== dayOfWeek)
+        });
+    };
+
+    const openRulesModal = () => {
+        setPickedDays([]);
+        setUntilMinutes(0);
+        setRulesVisible(true);
+    };
+
+    const saveRules = () => {
+        if (pickedDays.length === 0 && untilMinutes <= 0) return;
+        const filtered = settings.dayRules.filter(d => !pickedDays.includes(d.dayOfWeek))
+        const added = pickedDays.map(d => ({ dayOfWeek: d, untilMinutes }));
+        updateSettings({
+            isEnableRules: true, 
+            dayRules: [...filtered, ...added].sort((a,b) => a.dayOfWeek - b.dayOfWeek),
+        });
+        setRulesVisible(false)
     }
 
-    const saveRules = (dayOfWeek: number, untilMinutes: number) => {
-        const rect = settings.dayRules.filter(d => d.dayOfWeek !== dayOfWeek);
-        updateSettings({isEnableRules: true, dayRules: [...rect,{ dayOfWeek: dayOfWeek, untilMinutes: untilMinutes}]});
-        setModalRulesVisible(false);
-        setDayOfWeek([]);
-        setTime('');
-    }
+    const renderRules = () => (
+        <View style={{ marginTop: 12}}>
+            {settings.dayRules.length === 0 ? (
+                <Text style={{ color: colors.textMuted, fontStyle: 'italic'}}>Правил пока нет</Text>
+            ) : (                                
+                settings.dayRules.map(rule => (
+                    <View key={rule.dayOfWeek} style={styles.day.otRow}>
+                        <Text style={{ color: colors.text, flex: 1}}>
+                            {WEEKDAYS_SHORT[rule.dayOfWeek]} — до {MinutesToHHMM(rule.untilMinutes)}
+                        </Text>
+                        <TouchableOpacity onPress={() => removeRules(rule.dayOfWeek)}>
+                            <Text style={{ color: colors.danger, fontWeight: '600'}}>Удалить</Text>
+                        </TouchableOpacity>
+                    </View>
+                ))
+            )}
+            <TouchableOpacity 
+                onPress={openRulesModal}
+                style={[ styles.settings.addRuleBtn, { backgroundColor: colors.primary}]} 
+            >
+                <Text style={{ color: '#fff', fontWeight: '600'}}>+ Добавить правило</Text>
+            </TouchableOpacity>
+        </View>
+    );
 
 
     return (
         <ScrollView
             style={{ backgroundColor: colors.background }}
             contentContainerStyle={ styles.settings.container }
+            keyboardShouldPersistTaps='handled'
         >
             <Text style={[styles.settings.sectionTitle, { color: colors.textMuted}]}>Работа</Text>
             <View style={[styles.settings.card, {backgroundColor: colors.card, borderColor: colors.border}]}>
@@ -87,10 +120,10 @@ export default function SettingsScreen() {
                 />
 
                 <Text style={[styles.settings.label, { color: colors.textMuted, marginTop: 16}]}>Рабочих часов в день</Text>
-                <NumberField 
-                    value={MinutesToHHMM(String(settings.minutesPerDay))} 
+                <TimeField 
+                    value={MinutesToHHMM(settings.minutesPerDay)} 
                     onCommit={t => updateSettings({minutesPerDay: ParseTimeToMinutes(String(t))})} 
-                    placeholder="8"
+                    placeholder="8:00"
                     colors={colors}
                 />
                 <Text style={[styles.settings.label, { color: colors.textMuted, marginTop: 16}]}>График</Text>
@@ -125,18 +158,23 @@ export default function SettingsScreen() {
                 <Text style={[styles.settings.hint, { color: colors.textMuted }]}>
                     {SCHEDULE_HINTS[settings.schedule]}
                 </Text>
-                { showRuleField && (
-                    <View style={[styles.settings.row, { justifyContent: 'center', alignItems: 'center'}]}>
-                            <Text style={[styles.settings.label, { color: colors.text, marginTop: 16 }]}>
-                                Есть сокращённые дни
-                            </Text>
-                            <Switch style={{ justifyContent: 'center', alignItems: 'center'}} value={settings.isEnableRules} onValueChange={() => updateSettings({isEnableRules: !settings.isEnableRules})}/>
-                        </View>
+                {showRuleToggle && (
+                    <View style={styles.settings.switchRow}>
+                        <Text style={[styles.settings.label, { color: colors.text, flex: 1, marginBottom: 0 }]}>
+                            Есть сокращённые дни
+                        </Text>
+                        <Switch 
+                            value={settings.isEnableRules} 
+                            onValueChange={() => updateSettings({isEnableRules: !settings.isEnableRules})}
+                        />
+                    </View>
                 )}
 
-                { flexibleSchedule && (
-                    <View style={[styles.day.container]}>
-                        <Text style={[styles.settings.label, { color: colors.textMuted, marginTop: 16}]}>Рабочие дни</Text>
+                {flexibleSchedule && (
+                    <>
+                        <Text style={[styles.settings.label, { color: colors.textMuted, marginTop: 16}]}>
+                            Рабочие дни
+                        </Text>
                         <View style={styles.settings.row}>
                             {WEEKDAYS_SHORT.map((label, index) => {
                                 const active = settings.workDays.includes(index);
@@ -146,85 +184,28 @@ export default function SettingsScreen() {
                                         onPress={() => toggleWorkDay(index)}
                                         style={[
                                             styles.settings.chip,
-                                            { borderColor: colors.border},
+                                            { borderColor: colors.border, minWidth: 44},
                                             active && { backgroundColor: colors.primary, borderColor: colors.primary}
                                         ]}
                                     >
                                         <Text style={{ color: active ? '#fff' : colors.text, fontWeight: '600'}}>{label}</Text>
                                     </TouchableOpacity>
                                 );
-                                })
-                            }
+                            })}
                         </View>
-                        { settings.isEnableRules && (
-                            settings.dayRules.length === 0 ? (
-                                <Text style={{ color: colors.textMuted}}>Нет записей</Text>
-                            ) : (                                
-                                settings.dayRules.map( rule => {
-                                    const hours = String(MinutesToParts(rule.untilMinutes)[0]).padStart(2, '0');
-                                    const minutes = String(MinutesToParts(rule.untilMinutes)[1]).padStart(2, '0');
-                                    return(
-                                        <View key={rule.dayOfWeek} style={styles.day.otRow}>
-                                            <View style={{ flex: 1}}>
-                                                <Text style={{ color: colors.text, flex: 1}}>
-                                                    {WEEKDAYS_SHORT[rule.dayOfWeek]} до {hours}:{minutes}
-                                                </Text>
-                                            </View>
-                                            <TouchableOpacity onPress={() => removeRules(rule.dayOfWeek)}>
-                                                <Text style={{ color: colors.danger, fontWeight: '600'}}>Удалить</Text>
-                                            </TouchableOpacity>
-                                        </View>
-                                    );
-                                })
-                            )
-                        )}
-                        <View style={[styles.settings.chip, { backgroundColor: colors.primary, borderColor: colors.primary}]}>
-                            <TouchableOpacity style={{ alignItems: 'center'}} onPress={() => setModalRulesVisible(true)}>
-                                <Text style={{ color: '#fff', fontWeight: '600'}}>+ Добавить правило</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
+                        {settings.isEnableRules && renderRules()}
+                    </>
                 )} 
 
-                { standardSchedule && (
-                    <View style={[styles.day.container]}>
-                        { settings.isEnableRules && (
-                            settings.dayRules.length === 0 ? (
-                                <Text style={{ color: colors.textMuted}}>Нет записей</Text>
-                            ) : (                                
-                                settings.dayRules.map( rule => {
-                                    const hours = String(MinutesToParts(rule.untilMinutes)[0]).padStart(2, '0');
-                                    const minutes = String(MinutesToParts(rule.untilMinutes)[1]).padStart(2, '0');
-                                    return(
-                                        <View key={rule.dayOfWeek} style={styles.day.otRow}>
-                                            <View style={{ flex: 1}}>
-                                                <Text style={{ color: colors.text, flex: 1}}>
-                                                    {WEEKDAYS_SHORT[rule.dayOfWeek]} до {hours}:{minutes}
-                                                </Text>
-                                            </View>
-                                            <TouchableOpacity onPress={() => removeRules(rule.dayOfWeek)}>
-                                                <Text style={{ color: colors.danger, fontWeight: '600'}}>Удалить</Text>
-                                            </TouchableOpacity>
-                                        </View>
-                                    );
-                                })
-                            )
-                        )}
-                        <View style={[styles.settings.chip, { backgroundColor: colors.primary, borderColor: colors.primary}]}>
-                            <TouchableOpacity style={{ alignItems: 'center'}} onPress={() => setModalRulesVisible(true)}>
-                                <Text style={{ color: '#fff', fontWeight: '600'}}>+ Добавить правило</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                )}
+                {standardSchedule && settings.isEnableRules && renderRules()}
 
-                { showDateField && (
+                {showDateField && (
                     <>
                         <Text style={[styles.settings.label, { color: colors.textMuted, marginTop: 16 }]}>
                             Дата начала отсчёта
                         </Text>
                         <TouchableOpacity 
-                            onPress={() => setModalVisible(true)}
+                            onPress={() => setCalendarVisible(true)}
                             style={[styles.settings.dateField, { borderColor: colors.border, backgroundColor: colors.background }]}
                         >
                             <Text style={{ color: settings.startDate ? colors.text : colors.textMuted, fontSize: 16 }}>
@@ -237,7 +218,7 @@ export default function SettingsScreen() {
                         </Text>
                     </>
                 )}
-            </View>   
+            </View>  
             <Text style={[styles.settings.sectionTitle, { color: colors.textMuted}]}>Оформление</Text>
             <View style={[styles.settings.card, { backgroundColor: colors.card, borderColor: colors.border}]}>
                 <View style={styles.settings.row}>
@@ -267,32 +248,40 @@ export default function SettingsScreen() {
                 Данные хранятся только на этом устройстве.
             </Text>
 
+
+            {/* ─── Модалка: правило сокращённого дня ─────────────────────── */}
             <Modal
                 animationType='fade'
                 transparent
-                visible={modalRulesVisible}
-                onRequestClose={() => setModalRulesVisible(false)}
+                visible={rulesVisible}
+                onRequestClose={() => setRulesVisible(false)}
             >
                 <View style={styles.settings.overlay}>
                     <TouchableOpacity
                         style={StyleSheet.absoluteFill}
                         activeOpacity={1}
-                        onPress={() => setModalRulesVisible(false)}
+                        onPress={() => setRulesVisible(false)}
                     />
                     <View style={[styles.settings.modalCard, { backgroundColor: colors.card }]}>
-                        <Text style={{ color: colors.textMuted}}>Укажите день недели</Text>
-                        <View style={[styles.settings.row, { marginTop: 16}]}>
+                        <Text style={[styles.settings.modalTitle, { color: colors.text}]}>Сокращённый день</Text>
+                        
+                        <Text style={[styles.settings.label, { color: colors.textMuted, marginTop: 12}]}>
+                            Дни недели
+                        </Text>
+                        <View style={styles.settings.row}>
                             {WEEKDAYS_SHORT.map((label, index) => {
-                                const active = dayOfWeek.includes(index);
-
+                                const active = pickedDays.includes(index);
+                                const workDay = settings.workDays.includes(index);
                                 return (
                                     <TouchableOpacity 
                                         key={label}
-                                        onPress={() => toggleDayRules(index)}
+                                        onPress={() => togglePickedDay(index)}
+                                        disabled={!workDay}
                                         style={[
                                             styles.settings.chip,
-                                            { borderColor: colors.border},
-                                            active && { backgroundColor: colors.primary, borderColor: colors.primary}
+                                            { borderColor: colors.border, minWidth: 44},
+                                            active && { backgroundColor: colors.primary, borderColor: colors.primary},
+                                            !workDay && { backgroundColor: colors.border, opacity: 0.5}
                                         ]}
                                     >
                                         <Text style={{ color: active ? '#fff' : colors.text, fontWeight: '600'}}>{label}</Text>
@@ -300,29 +289,32 @@ export default function SettingsScreen() {
                                 );
                             })}
                         </View>
-                        <Text style={{ color: colors.textMuted, marginTop: 16}}>Укажите до скольки рабочий день</Text>
-                        <View style={[styles.settings.row, { marginTop: 16 }]}>
-                            <TimeField
-                                value={MinutesToHHMM(time)}
-                                onCommit={ t => setTime(String(ParseTimeToMinutes(t)))}
-                                placeholder="17:00"
-                                colors={colors}
-                            />
-                        </View>
-                        <View style={styles.settings.row}>
+
+                        <Text style={[styles.settings.label, { color: colors.textMuted, marginTop: 16}]}>
+                            Рабочий день до
+                        </Text>
+                        <TimeField
+                            value={MinutesToHHMM(untilMinutes)}
+                            onCommit={ t => setUntilMinutes(ParseTimeToMinutes(t))}
+                            placeholder="17:00"
+                            colors={colors}
+                        />
+
+                        <View style={[styles.settings.row, { marginTop: 20}]}>
                             <TouchableOpacity
-                                onPress={() => {
-                                    dayOfWeek.map((label) => {
-                                        saveRules(label, Number(time))
-                                    })
-                                }}
-                                style={[styles.settings.closeBtn, { borderColor: colors.border }]}
+                                onPress={saveRules}
+                                disabled={pickedDays.length === 0 || untilMinutes <= 0}
+                                style={[
+                                    styles.settings.closeBtn, 
+                                    { borderColor: colors.border, flex: 1 },
+                                    (pickedDays.length === 0 || untilMinutes <= 0) && { opacity: 0.5 },
+                                ]}
                             >
                                 <Text style={{ color: colors.primary, fontWeight: '600' }}>Сохранить</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
-                                onPress={() => setModalRulesVisible(false)}
-                                style={[styles.settings.closeBtn, { borderColor: colors.border }]}
+                                onPress={() => setRulesVisible(false)}
+                                style={[styles.settings.closeBtn, { borderColor: colors.border, flex: 1 }]}
                             >
                                 <Text style={{ color: colors.primary, fontWeight: '600' }}>Закрыть</Text>
                             </TouchableOpacity>
@@ -331,17 +323,19 @@ export default function SettingsScreen() {
                 </View>
             </Modal>
 
+
+            {/* ─── Модалка: выбор даты старта ─────────────────────────────── */}
             <Modal
                 animationType='fade'
                 transparent
-                visible={modalVisible}
-                onRequestClose={() => setModalVisible(false)}
+                visible={calendarVisible}
+                onRequestClose={() => setCalendarVisible(false)}
             >
                 <View style={styles.settings.overlay}>
                     <TouchableOpacity
                         style={StyleSheet.absoluteFill}
                         activeOpacity={1}
-                        onPress={() => setModalVisible(false)}
+                        onPress={() => setCalendarVisible(false)}
                     />
                     <View style={[styles.settings.modalCard, { backgroundColor: colors.card }]}>
                         <View style={styles.calendar.header}>
@@ -391,8 +385,8 @@ export default function SettingsScreen() {
                         </View>
 
                         <TouchableOpacity
-                            onPress={() => setModalVisible(false)}
-                            style={[styles.settings.closeBtn, { borderColor: colors.border }]}
+                            onPress={() => setCalendarVisible(false)}
+                            style={[styles.settings.closeBtn, { borderColor: colors.border, marginTop: 12 }]}
                         >
                             <Text style={{ color: colors.primary, fontWeight: '600' }}>Закрыть</Text>
                         </TouchableOpacity>

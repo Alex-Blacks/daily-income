@@ -189,6 +189,22 @@ export const makeStyles = (colors: Colors) => ({
             borderWidth: 1,
             alignItems: 'center',
         },
+        switchRow: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginTop: 16,
+            gap: 12,
+        },
+        addRuleBtn: {
+            marginTop: 12,
+            padding: 12,
+            borderRadius: 8,
+            alignItems: 'center',
+        },
+        modalTitle: {
+            fontSize: 18,
+            fontWeight: '700',
+        },
     }),
     day: StyleSheet.create({
         container: { 

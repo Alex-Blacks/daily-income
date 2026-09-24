@@ -4,7 +4,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useApp } from "../../lib/context";
 import { useStyles } from '../../lib/styles';
 import { MinutesToHHMM, ParseTimeToMinutes } from "../../lib/time";
-import NumberField from "../../components/NumberField";
+import NumberField, { TimeField } from "../../components/TypeField";
 
 export default function OvertimeNewScreen() {
     const { date } = useLocalSearchParams<{ date: string }>();
@@ -38,8 +38,8 @@ export default function OvertimeNewScreen() {
             <Text style={[styles.overtime.label, { color: colors.textMuted, marginTop: 16}]}>
                 Часов переработки
             </Text>
-            <NumberField
-                value={MinutesToHHMM(minutesOt)}
+            <TimeField
+                value={MinutesToHHMM(Number(minutesOt))}
                 onCommit={(n) => setMinutesOt(String(ParseTimeToMinutes(n)))}
                 placeholder="2"
                 colors={colors}

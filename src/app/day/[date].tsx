@@ -36,7 +36,7 @@ export default function DayScreen() {
                 {isWorkDays ? 'Рабочий день' : 'Выходной' }
             </Text>
             <Text style={[styles.day.formula, { color: colors.text}]}>
-                {MinutesToHHMM(String(baseHours))} × {settings.rate || 0} ₽ = {money(baseIncome)}
+                {MinutesToHHMM(baseHours)} × {settings.rate || 0} ₽ = {money(baseIncome)}
             </Text>
         </View>
             <View style={[ styles.day.card, { backgroundColor: colors.card, borderColor: colors.border}]}>
