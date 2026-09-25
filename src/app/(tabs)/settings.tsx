@@ -13,7 +13,7 @@ export default function SettingsScreen() {
     const [ calendarVisible, setCalendarVisible] = useState(false);
     const [ rulesVisible, setRulesVisible] = useState(false);
     const [ pickedDays, setPickedDays] = useState<number[]>([]);
-    const [ untilMinutes, setUntilMinutes] = useState(0);
+    const [ shortByMinutes, setShortByMinutes ] = useState(0);
     const [ cursor, setCursor] = useState<Cursor>({ 
         year: new Date().getFullYear(), 
         month: new Date().getMonth()});
@@ -62,14 +62,14 @@ export default function SettingsScreen() {
 
     const openRulesModal = () => {
         setPickedDays([]);
-        setUntilMinutes(0);
+        setShortByMinutes (0);
         setRulesVisible(true);
     };
 
     const saveRules = () => {
-        if (pickedDays.length === 0 && untilMinutes <= 0) return;
+        if (pickedDays.length === 0 && shortByMinutes  <= 0) return;
         const filtered = settings.dayRules.filter(d => !pickedDays.includes(d.dayOfWeek))
-        const added = pickedDays.map(d => ({ dayOfWeek: d, untilMinutes }));
+        const added = pickedDays.map(d => ({ dayOfWeek: d, shortByMinutes  }));
         updateSettings({
             isEnableRules: true, 
             dayRules: [...filtered, ...added].sort((a,b) => a.dayOfWeek - b.dayOfWeek),
@@ -85,7 +85,7 @@ export default function SettingsScreen() {
                 settings.dayRules.map(rule => (
                     <View key={rule.dayOfWeek} style={styles.day.otRow}>
                         <Text style={{ color: colors.text, flex: 1}}>
-                            {WEEKDAYS_SHORT[rule.dayOfWeek]} — до {MinutesToHHMM(rule.untilMinutes)}
+                            {WEEKDAYS_SHORT[rule.dayOfWeek]} — до {MinutesToHHMM(rule.shortByMinutes )}
                         </Text>
                         <TouchableOpacity onPress={() => removeRules(rule.dayOfWeek)}>
                             <Text style={{ color: colors.danger, fontWeight: '600'}}>Удалить</Text>
@@ -291,23 +291,23 @@ export default function SettingsScreen() {
                         </View>
 
                         <Text style={[styles.settings.label, { color: colors.textMuted, marginTop: 16}]}>
-                            Рабочий день до
+                            На сколько часов:минут раньше?
                         </Text>
                         <TimeField
-                            value={MinutesToHHMM(untilMinutes)}
-                            onCommit={ t => setUntilMinutes(ParseTimeToMinutes(t))}
-                            placeholder="17:00"
+                            value={MinutesToHHMM(shortByMinutes )}
+                            onCommit={ t => setShortByMinutes (ParseTimeToMinutes(t))}
+                            placeholder="00:15"
                             colors={colors}
                         />
 
                         <View style={[styles.settings.row, { marginTop: 20}]}>
                             <TouchableOpacity
                                 onPress={saveRules}
-                                disabled={pickedDays.length === 0 || untilMinutes <= 0}
+                                disabled={pickedDays.length === 0 || shortByMinutes  <= 0}
                                 style={[
                                     styles.settings.closeBtn, 
                                     { borderColor: colors.border, flex: 1 },
-                                    (pickedDays.length === 0 || untilMinutes <= 0) && { opacity: 0.5 },
+                                    (pickedDays.length === 0 || shortByMinutes  <= 0) && { opacity: 0.5 },
                                 ]}
                             >
                                 <Text style={{ color: colors.primary, fontWeight: '600' }}>Сохранить</Text>

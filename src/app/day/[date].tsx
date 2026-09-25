@@ -9,11 +9,11 @@ const money = (n: number) => `${n.toFixed(2)} ₽`;
 
 export default function DayScreen() {
     const { date } = useLocalSearchParams<{ date: string }>();
-    const { settings, overtime, removeOvertime, colors, isWorkDay } = useApp();
+    const { settings, overtime, removeOvertime, colors, getDayMinutes } = useApp();
     const styles = useStyles();
 
     const d = fromKey(date);
-    const isWorkDays = isWorkDay(date);
+    const isWorkDays = getDayMinutes(date);
     const baseHours = isWorkDays ? settings.minutesPerDay / 60 : 0;
     const baseIncome = baseHours * settings.rate;
 

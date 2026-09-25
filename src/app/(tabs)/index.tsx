@@ -9,7 +9,7 @@ import { MinutesToParts } from '../../lib/time';
 const formatShort = (n: number) => (n >= 1000 ? `${Math.round(n/100)/10}k` : `${Math.round(n)}`);
 
 export default function CalendarScreen() {
-    const { settings, overtime, cursor, setCursor, colors, isWorkDay } = useApp();
+    const { settings, overtime, cursor, setCursor, colors, getDayMinutes } = useApp();
     const styles = useStyles();
     const today = todayKey();
 
@@ -34,11 +34,10 @@ export default function CalendarScreen() {
             if (m>11) return {year: c.year + 1, month: 0}
             return {year: c.year, month: m}
         });
-    
-    const income = () => {
-        return (settings.rate * (settings.minutesPerDay / 60)) || 0;
-    }
 
+    const income = (date: string) => {
+        return (getDayMinutes(date) / 60 * settings.rate)
+    }
     const monthlyAmountOvertime = useMemo(() => {
         const requiredMonth = String(cursor.year) + "-" + String(cursor.month+1).padStart(2,"0")
         const filteredOvertime = overtime.filter((data) => data.date.startsWith(requiredMonth))
@@ -51,7 +50,8 @@ export default function CalendarScreen() {
         const countDay = new Date(cursor.year, cursor.month + 1, 0).getDate();
         let sumMonth = 0;
         for (let i = 1; i <= countDay; i++) {
-            isWorkDay(toKey(new Date(cursor.year, cursor.month, i))) ? sumMonth += income() : sumMonth += 0;
+            const date = new Date(cursor.year, cursor.month, i)
+            sumMonth += income(toKey(date))
         }
         return sumMonth;
     },[cursor, settings.workDays, settings.schedule, settings.startDate, settings.rate, settings.minutesPerDay])
@@ -89,8 +89,7 @@ export default function CalendarScreen() {
                     if (!date) return <View key={i} style={styles.calendar.cellWrap}/>;
 
                     const key = toKey(date);
-                    const isWorkDays = isWorkDay(key)
-                    const base = isWorkDays ? income() : 0;
+                    const base = income(key);
                     const ot = overtimeByDate.get(key) ?? { minutes: 0, income: 0};
                     const total = base + ot.income;
                     const isToday = key === today;

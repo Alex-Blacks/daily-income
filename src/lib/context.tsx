@@ -12,7 +12,7 @@ export type Cursor = {
 type Ctx = {
     ready: boolean;
     settings: Settings;
-    isWorkDay: (dateStr: string) => boolean;
+    getDayMinutes: (dateStr: string) => number;
     updateSettings: (patch: Partial<Settings>) => void;
 
     overtime: OvertimeEntry[];
@@ -79,30 +79,34 @@ export function AppProvider({ children }: { children:ReactNode }) {
         setException(prev => prev.filter(e => e.id != id));
     }
 
-    const isWorkDay = (dateStr: string): boolean => {
-        const { schedule, startDate, workDays } = settings;
-        const date = fromKey(dateStr)
+    const getDayMinutes = (dateStr: string): number => {
+        const { schedule, startDate, workDays, dayRules, minutesPerDay } = settings;
+        const date = fromKey(dateStr);
+        const dayWeek = (date.getDay() + 6) % 7;
         if (schedule === '5/2' || schedule === 'Свой') {
-            return workDays.includes((date.getDay() + 6) % 7);
+            if (!workDays.includes(dayWeek)) return 0;
+
+            return minutesPerDay;
         }
-        if (startDate === null) return false;
+
+        if (startDate === null) return 0;
 
         const start = fromKey(startDate);
-        if (date.getTime() < start.getTime()) return false;
+        if (date < start) return 0;
 
         const days = Math.floor((date.getTime() - start.getTime())/86400000);
-        if (schedule === '3/3') return days % 6 < 3;
-        if (schedule === '2/2') return days % 4 < 2;
-        if (schedule === '1/3') return days % 4 < 1;
+        if (schedule === '3/3' && (days % 6 < 3)) return minutesPerDay;
+        if (schedule === '2/2' && (days % 4 < 2)) return minutesPerDay;
+        if (schedule === '1/3' && (days % 4 < 1)) return minutesPerDay;
 
-        return false
+        return 0
     }
 
     const isDark = settings.theme === 'dark' || (settings.theme === 'auto' && system === 'dark');
     const colors = isDark ? darkColors : lightColors; 
 
     const value = useMemo(
-        () => ({ ready, settings, isWorkDay, updateSettings, overtime, addOvertime, removeOvertime, exception, addException, removeException, cursor, setCursor, colors, isDark }),
+        () => ({ ready, settings, getDayMinutes, updateSettings, overtime, addOvertime, removeOvertime, exception, addException, removeException, cursor, setCursor, colors, isDark }),
         [ready, settings,overtime, exception, cursor, colors, isDark],
     )
 
