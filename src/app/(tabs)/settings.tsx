@@ -67,7 +67,7 @@ export default function SettingsScreen() {
     };
 
     const saveRules = () => {
-        if (pickedDays.length === 0 && shortByMinutes  <= 0) return;
+        if (pickedDays.length === 0 || shortByMinutes  <= 0) return;
         const filtered = settings.dayRules.filter(d => !pickedDays.includes(d.dayOfWeek))
         const added = pickedDays.map(d => ({ dayOfWeek: d, shortByMinutes  }));
         updateSettings({
@@ -85,7 +85,7 @@ export default function SettingsScreen() {
                 settings.dayRules.map(rule => (
                     <View key={rule.dayOfWeek} style={styles.day.otRow}>
                         <Text style={{ color: colors.text, flex: 1}}>
-                            {WEEKDAYS_SHORT[rule.dayOfWeek]} — до {MinutesToHHMM(rule.shortByMinutes )}
+                            {WEEKDAYS_SHORT[rule.dayOfWeek]} — меньше на {MinutesToHHMM(rule.shortByMinutes )}
                         </Text>
                         <TouchableOpacity onPress={() => removeRules(rule.dayOfWeek)}>
                             <Text style={{ color: colors.danger, fontWeight: '600'}}>Удалить</Text>

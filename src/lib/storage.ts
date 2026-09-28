@@ -24,7 +24,7 @@ export type OvertimeEntry = {
     minutes: number;
 };
 
-export type Exceptions = {
+export type Exception = {
     id: string;
     date: string;
     minutes: number;
@@ -67,7 +67,7 @@ export const saveOvertime = (entries: OvertimeEntry[]) => {
     AsyncStorage.setItem(OVERTIME_KEY, JSON.stringify(entries));
 }
 
-export const loadException = async ():Promise<Exceptions[]> => {
+export const loadException = async ():Promise<Exception[]> => {
     try {
         const raw = await AsyncStorage.getItem(EXCEPTION_KEY);
         return raw ? JSON.parse(raw) : [];
@@ -76,6 +76,6 @@ export const loadException = async ():Promise<Exceptions[]> => {
     }
 }
 
-export const saveException = (except: Exceptions[]) => {
+export const saveException = (except: Exception[]) => {
     AsyncStorage.setItem(EXCEPTION_KEY, JSON.stringify(except));
 }

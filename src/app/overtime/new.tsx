@@ -6,6 +6,14 @@ import { useStyles } from '../../lib/styles';
 import { MinutesToHHMM, ParseTimeToMinutes } from "../../lib/time";
 import NumberField, { TimeField } from "../../components/TypeField";
 
+type RateOt = 1 | 1.5 | 2;
+const RateOptionsOt: RateOt[] = [1, 1.5, 2];
+const RateLabel: Record<RateOt,string> = {
+    '1' : 'Базовая',
+    '1.5' : 'x1.5',
+    '2' : 'x2'
+}
+
 export default function OvertimeNewScreen() {
     const { date } = useLocalSearchParams<{ date: string }>();
     const { settings, addOvertime, colors } = useApp();
@@ -57,24 +65,17 @@ export default function OvertimeNewScreen() {
             />
 
             <View style={ styles.overtime.chipsRow}>
-                <TouchableOpacity
-                    onPress={() => setRateOt(settings.rate)}
-                    style={[ styles.overtime.chip, { borderColor: colors.border, backgroundColor: colors.card}]}
-                >
-                    <Text style={{ color: colors.text, fontWeight: '600'}}>Базовая</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    onPress={() => setRateOt(settings.rate * 1.5)}
-                    style={[ styles.overtime.chip, { borderColor: colors.border, backgroundColor: colors.card}]}
-                >
-                    <Text style={{ color: colors.text, fontWeight: '600'}}>×1.5</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    onPress={() => setRateOt(settings.rate * 2)}
-                    style={[ styles.overtime.chip, { borderColor: colors.border, backgroundColor: colors.card}]}
-                >
-                    <Text style={{ color: colors.text, fontWeight: '600'}}>×2</Text>
-                </TouchableOpacity>
+                {RateOptionsOt.map(rate => {
+                    return(
+                        <TouchableOpacity
+                            key={rate}
+                            onPress={() => setRateOt(settings.rate * rate)}
+                            style={[ styles.overtime.chip, { borderColor: colors.border, backgroundColor: colors.card}]}
+                        >
+                            <Text style={{ color: colors.text, fontWeight: '600'}}>{RateLabel[rate]}</Text>
+                        </TouchableOpacity>
+                    )
+                })}
             </View>
             <View style={[styles.overtime.preview, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 <Text style={{ color: colors.textMuted, fontSize: 13 }}>Итого за эту запись</Text>

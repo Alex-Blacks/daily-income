@@ -9,7 +9,7 @@ import { MinutesToParts } from '../../lib/time';
 const formatShort = (n: number) => (n >= 1000 ? `${Math.round(n/100)/10}k` : `${Math.round(n)}`);
 
 export default function CalendarScreen() {
-    const { settings, overtime, cursor, setCursor, colors, getDayMinutes } = useApp();
+    const { settings, overtime, exception, cursor, setCursor, colors, getDayMinutes } = useApp();
     const styles = useStyles();
     const today = todayKey();
 
@@ -54,7 +54,7 @@ export default function CalendarScreen() {
             sumMonth += income(toKey(date))
         }
         return sumMonth;
-    },[cursor, settings.workDays, settings.schedule, settings.startDate, settings.rate, settings.minutesPerDay])
+    },[cursor, settings, exception])
 
     const monthTotal = (monthlyAmount + monthlyAmountOvertime) || 0;
 

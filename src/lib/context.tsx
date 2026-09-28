@@ -1,6 +1,6 @@
 import { useEffect, createContext, useContext, useState, ReactNode, useMemo } from "react";
 import { useColorScheme } from "react-native";
-import { Settings, OvertimeEntry, defaultSettings, loadSettings, saveSettings, loadOvertime, saveOvertime, Exceptions, loadException, saveException } from "./storage";
+import { Settings, OvertimeEntry, defaultSettings, loadSettings, saveSettings, loadOvertime, saveOvertime, Exception, loadException, saveException } from "./storage";
 import { Colors, darkColors, lightColors } from "./theme";
 import { fromKey } from "./dates";
 
@@ -19,8 +19,8 @@ type Ctx = {
     addOvertime: (entry: Omit<OvertimeEntry, 'id'>) => void;
     removeOvertime: (id: string) => void;
 
-    exception: Exceptions[];
-    addException: (except: Omit<Exceptions, 'id'>) => void;
+    exception: Exception[];
+    addException: (except: Omit<Exception, 'id'>) => void;
     removeException: (id:string) => void;
 
     cursor: Cursor;
@@ -36,7 +36,7 @@ export function AppProvider({ children }: { children:ReactNode }) {
     const [ ready, setReady ] = useState(false);
     const [ settings, setSettings ] = useState<Settings>(defaultSettings);
     const [ overtime, setOvertime ] = useState<OvertimeEntry[]>([]);
-    const [ exception, setException ] = useState<Exceptions[]>([]);
+    const [ exception, setException ] = useState<Exception[]>([]);
     const [ cursor, setCursor ] = useState(() => {
             const d = new Date();
             return { year: d.getFullYear(), month: d.getMonth()}
@@ -71,35 +71,43 @@ export function AppProvider({ children }: { children:ReactNode }) {
         setOvertime(prev => prev.filter(o => o.id !== id));
     }
 
-    const addException = (except: Omit<Exceptions, 'id'>) => {
-        setException(prev => [...prev, {...except, id: String(Date.now())}]);
+    const addException = (except: Omit<Exception, 'id'>) => {
+        setException(prev => [
+            ...prev.filter(e => e.date !== except.date), 
+            {...except, id: String(Date.now())}]);
     }
 
     const removeException = (id:string) => {
         setException(prev => prev.filter(e => e.id != id));
     }
 
-    const getDayMinutes = (dateStr: string): number => {
-        const { schedule, startDate, workDays, dayRules, minutesPerDay } = settings;
+    const isScheduledWorkDay = (dateStr: string): boolean => {
+        const { schedule, startDate, workDays } = settings;
         const date = fromKey(dateStr);
-        const dayWeek = (date.getDay() + 6) % 7;
+
         if (schedule === '5/2' || schedule === 'Свой') {
-            if (!workDays.includes(dayWeek)) return 0;
+            return workDays.includes((date.getDay() + 6) % 7);
+        } 
 
-            return minutesPerDay;
-        }
-
-        if (startDate === null) return 0;
-
+        if (startDate === null) return false;
+        
         const start = fromKey(startDate);
-        if (date < start) return 0;
+        if (date < start) return false;
 
         const days = Math.floor((date.getTime() - start.getTime())/86400000);
-        if (schedule === '3/3' && (days % 6 < 3)) return minutesPerDay;
-        if (schedule === '2/2' && (days % 4 < 2)) return minutesPerDay;
-        if (schedule === '1/3' && (days % 4 < 1)) return minutesPerDay;
+        if (schedule === '3/3') return (days % 6 < 3);
+        if (schedule === '2/2') return (days % 4 < 2);
+        if (schedule === '1/3') return (days % 4 < 1);
 
-        return 0
+        return false;
+    }
+
+    const getDayMinutes = (dateStr: string): number => {
+        const { minutesPerDay } = settings;
+        const exc = exception.find(f => f.date === dateStr)?.minutes || 0;
+
+        const result = isScheduledWorkDay(dateStr) ? minutesPerDay - exc : 0;
+        return result;
     }
 
     const isDark = settings.theme === 'dark' || (settings.theme === 'auto' && system === 'dark');
