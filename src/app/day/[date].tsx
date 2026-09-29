@@ -5,7 +5,7 @@ import { fromKey, MONTH_FOR_DAYS} from "../../lib/dates";
 import { useApp } from "../../lib/context";
 import { useStyles } from '../../lib/styles';
 import { MinutesToHHMM, MinutesToParts, ParseTimeToMinutes } from "../../lib/time";
-import { TimeField } from "../../components/TypeField";
+import { TimeField } from "../../components/InputFields";
 
 type WorkTimeDay = 0.5 | 1;
 const WorkTimeOptions: WorkTimeDay[] = [0.5, 1]
@@ -195,6 +195,7 @@ export default function DayScreen() {
                             dayExceptions.map(exc => {
                                 return (
                                     <TouchableOpacity
+                                    key={exc.id}
                                     onPress={() => deleteException(exc.id)}
                                     style={[styles.settings.closeBtn, { borderColor: colors.border, flex: 1}]}
                                 >

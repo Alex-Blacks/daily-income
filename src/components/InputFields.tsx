@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Colors } from "../lib/theme";
-import { StyleSheet, TextInput, Platform  } from "react-native";
+import { TextInput, Platform  } from "react-native";
 import { useStyles } from "../lib/styles";
 
 type Props = {
@@ -31,7 +31,7 @@ export default function NumberField({ value, onCommit, colors, placeholder, auto
     }
 
     const commit = () => {
-        const normalized = text.replace(',', '.');
+        const normalized = text.replace(/,/g, '.');
         const n = parseFloat(normalized);
         const out = Number.isFinite(n) ? String(n) : '';
         setText(out);
@@ -111,7 +111,7 @@ export function TimeField ({ value, onCommit, colors, placeholder, autoFocus}: T
  */
 
 function normalizeTime(input: string): string {
-    const clean = input.replace(/\D/, '');
+    const clean = input.replace(/\D/g, '');
 
     let hours = 0;
     let minutes = 0;
@@ -127,6 +127,9 @@ function normalizeTime(input: string): string {
         hours = parseInt(clean.slice(0,2), 10);
         minutes = parseInt(clean.slice(2,4), 10);
     }
+
+    hours = Math.min(Math.max(hours, 0), 23);
+    minutes = Math.min(Math.max(minutes, 0), 59);
 
     return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
 }

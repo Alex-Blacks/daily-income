@@ -36,3 +36,9 @@ export const MinutesToHHMM = (minutes: number): string => {
     const [h, m] = MinutesToParts(minutes);
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 };
+
+export type WorkTimeDay = {
+    start: number,
+    end: number,
+    lunch: number,
+}

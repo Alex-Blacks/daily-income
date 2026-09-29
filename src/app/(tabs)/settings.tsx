@@ -1,23 +1,33 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { StyleSheet, TouchableOpacity, View, Text, ScrollView,  Modal, Switch } from "react-native";
 import { useApp, Cursor } from "../../lib/context";
 import { useStyles} from '../../lib/styles';
 import { SCHEDULE_HINTS, SCHEDULE_OPTIONS, WEEKDAYS_SHORT, MONTHS, getMonthGrid, toKey, todayKey } from '../../lib/dates';
 import { ThemeName, THEME_LABELS } from "../../lib/theme";
-import NumberField, { TimeField } from "../../components/TypeField";
+import NumberField, { TimeField } from "../../components/InputFields";
 import { defaultSettings } from "../../lib/storage";
-import { MinutesToHHMM, MinutesToParts, ParseTimeToMinutes } from "../../lib/time";
+import { MinutesToHHMM, ParseTimeToMinutes } from "../../lib/time";
 
 export default function SettingsScreen() {
     const { settings, updateSettings, colors} = useApp();
+    const [ workStartToMinutes, setWorkStartToMinutes] = useState(settings.workTime.start);
+    const [ workEndToMinutes, setWorkEndToMinutes] = useState(settings.workTime.end);
+    const [ lunchToMinutes, setLunchToMinutes] = useState(settings.workTime.lunch);
     const [ calendarVisible, setCalendarVisible] = useState(false);
     const [ rulesVisible, setRulesVisible] = useState(false);
     const [ pickedDays, setPickedDays] = useState<number[]>([]);
     const [ shortByMinutes, setShortByMinutes ] = useState(0);
+    const [ effectiveFrom, setEffectiveFrom] = useState(toKey(new Date()))
     const [ cursor, setCursor] = useState<Cursor>({ 
         year: new Date().getFullYear(), 
         month: new Date().getMonth()});
     const styles = useStyles();
+
+    useEffect(() => {
+        setWorkStartToMinutes(settings.workTime.start);
+        setWorkEndToMinutes(settings.workTime.end);
+        setLunchToMinutes(settings.workTime.lunch);
+    },[settings.workTime.start, settings.workTime.end, settings.workTime.lunch])
 
     const flexibleSchedule =  settings.schedule === 'Свой';
     const standardSchedule = settings.schedule === '5/2';
@@ -68,24 +78,26 @@ export default function SettingsScreen() {
 
     const saveRules = () => {
         if (pickedDays.length === 0 || shortByMinutes  <= 0) return;
-        const filtered = settings.dayRules.filter(d => !pickedDays.includes(d.dayOfWeek))
-        const added = pickedDays.map(d => ({ dayOfWeek: d, shortByMinutes  }));
+
+        const added = pickedDays.map(d => ({ dayOfWeek: d, shortByMinutes, effectiveFrom  }));
         updateSettings({
             isEnableRules: true, 
-            dayRules: [...filtered, ...added].sort((a,b) => a.dayOfWeek - b.dayOfWeek),
+            dayRules: [...settings.dayRules, ...added].sort((a,b) => a.dayOfWeek - b.dayOfWeek),
         });
         setRulesVisible(false)
     }
 
+    const totalShiftMinutes = (start:number, end:number) => end < start ? (end - start) + 24 * 60 : end - start;
+
     const renderRules = () => (
         <View style={{ marginTop: 12}}>
             {settings.dayRules.length === 0 ? (
-                <Text style={{ color: colors.textMuted, fontStyle: 'italic'}}>Правил пока нет</Text>
+                <Text style={{ color: colors.textMuted, fontStyle: 'italic'}}>Сокращённые дни ещё не указаны</Text>
             ) : (                                
-                settings.dayRules.map(rule => (
-                    <View key={rule.dayOfWeek} style={styles.day.otRow}>
+                settings.dayRules.map((rule, idx) => (
+                    <View key={idx} style={styles.day.otRow}>
                         <Text style={{ color: colors.text, flex: 1}}>
-                            {WEEKDAYS_SHORT[rule.dayOfWeek]} — меньше на {MinutesToHHMM(rule.shortByMinutes )}
+                            {WEEKDAYS_SHORT[rule.dayOfWeek]} — до {MinutesToHHMM(rule.shortByMinutes)} начиная с {rule.effectiveFrom}
                         </Text>
                         <TouchableOpacity onPress={() => removeRules(rule.dayOfWeek)}>
                             <Text style={{ color: colors.danger, fontWeight: '600'}}>Удалить</Text>
@@ -97,9 +109,76 @@ export default function SettingsScreen() {
                 onPress={openRulesModal}
                 style={[ styles.settings.addRuleBtn, { backgroundColor: colors.primary}]} 
             >
-                <Text style={{ color: '#fff', fontWeight: '600'}}>+ Добавить правило</Text>
+                <Text style={{ color: '#fff', fontWeight: '600'}}>+ Добавить сокращённый день</Text>
             </TouchableOpacity>
         </View>
+    );
+
+    const renderCalendar = (onSelect: boolean) => (
+        <>
+            {/* ─── Модалка: календарь ─────────────────────────────── */}
+                <View style={styles.settings.overlay}>
+                    <TouchableOpacity
+                        style={StyleSheet.absoluteFill}
+                        activeOpacity={1}
+                        onPress={() => setCalendarVisible(false)}
+                    />
+                    <View style={[styles.settings.modalCard, { backgroundColor: colors.card }]}>
+                        <View style={styles.calendar.header}>
+                            <TouchableOpacity onPress={() => shiftMonth(-1)} style={styles.calendar.navBtn}>
+                                <Text style={[styles.calendar.navBtnText, { color: colors.primary }]}>‹</Text>
+                            </TouchableOpacity>
+                            <Text style={[styles.calendar.monthLabel, { color: colors.text }]}>
+                                {MONTHS[cursor.month]} {cursor.year}
+                            </Text>
+                            <TouchableOpacity onPress={() => shiftMonth(1)} style={styles.calendar.navBtn}>
+                                <Text style={[styles.calendar.navBtnText, { color: colors.primary }]}>›</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={styles.calendar.weekdaysRow}>
+                            {WEEKDAYS_SHORT.map(w => (
+                                <Text key={w} style={[styles.calendar.weekday, { color: colors.textMuted }]}>{w}</Text>
+                            ))}
+                        </View>
+
+                        <View style={styles.calendar.grid}>
+                            {cells.map((date, i) => {
+                                if (!date) return <View key={i} style={styles.calendar.cellWrap} />;
+
+                                const key = toKey(date);
+                                const isToday = key === today;
+                                const isSelected = onSelect;
+
+                                return (
+                                <View key={i} style={styles.calendar.cellWrap}>
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.calendar.cell,
+                                            { backgroundColor: colors.background },
+                                            isToday && { borderColor: colors.primary, borderWidth: 2 },
+                                            isSelected && { borderColor: colors.accent, borderWidth: 2 },
+                                        ]}
+                                        onPress={() => selectedDay(key)}
+                                    >
+                                    <Text style={[styles.calendar.dayNum, { color: colors.text }]}>
+                                        {date.getDate()}
+                                    </Text>
+                                    </TouchableOpacity>
+                                </View>
+                                );
+                            })}
+                        </View>
+
+                        <TouchableOpacity
+                            onPress={() => setCalendarVisible(false)}
+                            style={[styles.settings.closeBtn, { borderColor: colors.border, marginTop: 12 }]}
+                        >
+                            <Text style={{ color: colors.primary, fontWeight: '600' }}>Закрыть</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+        </>
     );
 
 
@@ -118,14 +197,47 @@ export default function SettingsScreen() {
                     placeholder="500"
                     colors={colors}
                 />
-
-                <Text style={[styles.settings.label, { color: colors.textMuted, marginTop: 16}]}>Рабочих часов в день</Text>
-                <TimeField 
-                    value={MinutesToHHMM(settings.minutesPerDay)} 
-                    onCommit={t => updateSettings({minutesPerDay: ParseTimeToMinutes(String(t))})} 
-                    placeholder="8:00"
-                    colors={colors}
-                />
+                <View style={[styles.settings.row, { marginTop: 16}]}>
+                    <View>
+                        <Text style={[styles.settings.label, { color: colors.textMuted}]}>Начало рабочего дня</Text>
+                        <TimeField 
+                            value={MinutesToHHMM(settings.workTime.start)} 
+                            onCommit={t =>                                 
+                                updateSettings({
+                                    workTime: {...settings.workTime, 'start': ParseTimeToMinutes(t)},
+                                    minutesPerDay: Math.max(0, totalShiftMinutes(ParseTimeToMinutes(t), settings.workTime.end) - settings.workTime.lunch)
+                                })}  
+                            placeholder="9:00"
+                            colors={colors}
+                        />
+                    </View>
+                    <View style={{ marginLeft: 20}}>
+                        <Text style={[styles.settings.label, { color: colors.textMuted}]}>Конец рабочего дня</Text>
+                        <TimeField 
+                            value={MinutesToHHMM(settings.workTime.end)} 
+                            onCommit={t =>
+                                updateSettings({
+                                    workTime: {...settings.workTime, 'end': ParseTimeToMinutes(t)},
+                                    minutesPerDay: Math.max(0, totalShiftMinutes(settings.workTime.start, ParseTimeToMinutes(t)) - settings.workTime.lunch)
+                                })} 
+                            placeholder="16:00"
+                            colors={colors}
+                        />
+                    </View>
+                    <View style={{ marginLeft: 20}}>
+                        <Text style={[styles.settings.label, { color: colors.textMuted}]}>Время на обед</Text>
+                        <TimeField 
+                            value={MinutesToHHMM(settings.workTime.lunch)} 
+                            onCommit={t => 
+                                updateSettings({
+                                    workTime: {...settings.workTime, 'lunch': ParseTimeToMinutes(t)},
+                                    minutesPerDay: Math.max(0, totalShiftMinutes(settings.workTime.start, settings.workTime.end) - ParseTimeToMinutes(t))
+                                })} 
+                            placeholder="01:00"
+                            colors={colors}
+                        />
+                    </View>
+                </View>
                 <Text style={[styles.settings.label, { color: colors.textMuted, marginTop: 16}]}>График</Text>
                 <View style={ styles.settings.row}>
                     {SCHEDULE_OPTIONS.map( t => {
@@ -134,7 +246,7 @@ export default function SettingsScreen() {
                             <TouchableOpacity
                                 key={t}
                                 onPress={() => {
-                                    if (t === '5/2') {
+                                    if (t === '5/2' || t === 'Свой') {
                                         updateSettings({
                                             workDays: defaultSettings.workDays,
                                             schedule: t
@@ -163,6 +275,7 @@ export default function SettingsScreen() {
                         <Text style={[styles.settings.label, { color: colors.text, flex: 1, marginBottom: 0 }]}>
                             Есть сокращённые дни
                         </Text>
+                        <Text style={[styles.settings.hint, { color: colors.textMuted}]}>Выбранные дни будут повторятся каждую неделю</Text>
                         <Switch 
                             value={settings.isEnableRules} 
                             onValueChange={() => updateSettings({isEnableRules: !settings.isEnableRules})}
@@ -291,14 +404,31 @@ export default function SettingsScreen() {
                         </View>
 
                         <Text style={[styles.settings.label, { color: colors.textMuted, marginTop: 16}]}>
-                            На сколько часов:минут раньше?
+                            Во сколько заканчивается рабочий день?
                         </Text>
                         <TimeField
                             value={MinutesToHHMM(shortByMinutes )}
-                            onCommit={ t => setShortByMinutes (ParseTimeToMinutes(t))}
+                            onCommit={ t => setShortByMinutes(ParseTimeToMinutes(t))}
                             placeholder="00:15"
                             colors={colors}
                         />
+                        <>
+                            <Text style={[styles.settings.label, { color: colors.textMuted, marginTop: 16 }]}>
+                                С какого числа?
+                            </Text>
+                            <TouchableOpacity 
+                                onPress={() => setCalendarVisible(true)}
+                                style={[styles.settings.dateField, { borderColor: colors.border, backgroundColor: colors.background }]}
+                            >
+                                <Text style={{ color: settings.startDate ? colors.text : colors.textMuted, fontSize: 16 }}>
+                                    { settings.startDate ? settings.startDate : 'Нажмите чтобы выбрать'}
+                                </Text>  
+                                <Text style={{ color: colors.primary, fontSize: 18 }}>📅</Text>                          
+                            </TouchableOpacity>
+                            <Text style={[styles.settings.hint, { color: colors.textMuted }]}>
+                                Например: если с 1 Октября уменьшают сокращённый день на 15 минут.
+                            </Text>
+                        </>
 
                         <View style={[styles.settings.row, { marginTop: 20}]}>
                             <TouchableOpacity
@@ -324,75 +454,7 @@ export default function SettingsScreen() {
             </Modal>
 
 
-            {/* ─── Модалка: выбор даты старта ─────────────────────────────── */}
-            <Modal
-                animationType='fade'
-                transparent
-                visible={calendarVisible}
-                onRequestClose={() => setCalendarVisible(false)}
-            >
-                <View style={styles.settings.overlay}>
-                    <TouchableOpacity
-                        style={StyleSheet.absoluteFill}
-                        activeOpacity={1}
-                        onPress={() => setCalendarVisible(false)}
-                    />
-                    <View style={[styles.settings.modalCard, { backgroundColor: colors.card }]}>
-                        <View style={styles.calendar.header}>
-                            <TouchableOpacity onPress={() => shiftMonth(-1)} style={styles.calendar.navBtn}>
-                                <Text style={[styles.calendar.navBtnText, { color: colors.primary }]}>‹</Text>
-                            </TouchableOpacity>
-                            <Text style={[styles.calendar.monthLabel, { color: colors.text }]}>
-                                {MONTHS[cursor.month]} {cursor.year}
-                            </Text>
-                            <TouchableOpacity onPress={() => shiftMonth(1)} style={styles.calendar.navBtn}>
-                                <Text style={[styles.calendar.navBtnText, { color: colors.primary }]}>›</Text>
-                            </TouchableOpacity>
-                        </View>
-
-                        <View style={styles.calendar.weekdaysRow}>
-                            {WEEKDAYS_SHORT.map(w => (
-                                <Text key={w} style={[styles.calendar.weekday, { color: colors.textMuted }]}>{w}</Text>
-                            ))}
-                        </View>
-
-                        <View style={styles.calendar.grid}>
-                            {cells.map((date, i) => {
-                                if (!date) return <View key={i} style={styles.calendar.cellWrap} />;
-
-                                const key = toKey(date);
-                                const isToday = key === today;
-                                const isSelected = key === settings.startDate;
-
-                                return (
-                                <View key={i} style={styles.calendar.cellWrap}>
-                                    <TouchableOpacity
-                                        style={[
-                                            styles.calendar.cell,
-                                            { backgroundColor: colors.background },
-                                            isToday && { borderColor: colors.primary, borderWidth: 2 },
-                                            isSelected && { borderColor: colors.accent, borderWidth: 2 },
-                                        ]}
-                                        onPress={() => selectedDay(key)}
-                                    >
-                                    <Text style={[styles.calendar.dayNum, { color: colors.text }]}>
-                                        {date.getDate()}
-                                    </Text>
-                                    </TouchableOpacity>
-                                </View>
-                                );
-                            })}
-                        </View>
-
-                        <TouchableOpacity
-                            onPress={() => setCalendarVisible(false)}
-                            style={[styles.settings.closeBtn, { borderColor: colors.border, marginTop: 12 }]}
-                        >
-                            <Text style={{ color: colors.primary, fontWeight: '600' }}>Закрыть</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </Modal>
+            
         </ScrollView>
     );
 }

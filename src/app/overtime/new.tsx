@@ -4,7 +4,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useApp } from "../../lib/context";
 import { useStyles } from '../../lib/styles';
 import { MinutesToHHMM, ParseTimeToMinutes } from "../../lib/time";
-import NumberField, { TimeField } from "../../components/TypeField";
+import NumberField, { TimeField } from "../../components/InputFields";
 
 type RateOt = 1 | 1.5 | 2;
 const RateOptionsOt: RateOt[] = [1, 1.5, 2];

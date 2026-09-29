@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ThemeName } from "./theme";
 import { ScheduleMonth, ShortDay } from "./dates";
+import { WorkTimeDay } from "./time";
 
 const SETTINGS_KEY = 'daily-income:settings';
 const OVERTIME_KEY = 'daily-income:overtime';
@@ -12,6 +13,7 @@ export type Settings = {
     schedule: ScheduleMonth;
     startDate: string | null;
     workDays: number[];
+    workTime: WorkTimeDay;
     dayRules: ShortDay[];
     isEnableRules: boolean;
     theme: ThemeName;
@@ -36,6 +38,7 @@ export const defaultSettings: Settings = {
     schedule: '5/2',
     startDate: null,
     workDays: [0, 1, 2, 3, 4],
+    workTime: { start: 540, end: 1080, lunch: 60},
     dayRules: [],
     isEnableRules: false,
     theme: 'auto',
@@ -50,8 +53,12 @@ export const loadSettings = async ():Promise<Settings> => {
     }
 };
 
-export const saveSettings = (s:Settings) => {
-    AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+export const saveSettings = async (s:Settings):Promise<void> => {
+    try {
+        AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+    } catch (e) {
+        console.log('Ошибка сохранения настроек: ', e);
+    }
 };
 
 export const loadOvertime = async ():Promise<OvertimeEntry[]> => {
@@ -63,10 +70,13 @@ export const loadOvertime = async ():Promise<OvertimeEntry[]> => {
     }
 };
 
-export const saveOvertime = (entries: OvertimeEntry[]) => {
-    AsyncStorage.setItem(OVERTIME_KEY, JSON.stringify(entries));
+export const saveOvertime = async (entries: OvertimeEntry[]):Promise<void> => {
+    try {
+        AsyncStorage.setItem(OVERTIME_KEY, JSON.stringify(entries));
+    } catch (e) {
+        console.log('Ошибка сохранения переработок: ', e);
+    }
 }
-
 export const loadException = async ():Promise<Exception[]> => {
     try {
         const raw = await AsyncStorage.getItem(EXCEPTION_KEY);
@@ -76,6 +86,10 @@ export const loadException = async ():Promise<Exception[]> => {
     }
 }
 
-export const saveException = (except: Exception[]) => {
-    AsyncStorage.setItem(EXCEPTION_KEY, JSON.stringify(except));
+export const saveException = async (except: Exception[]):Promise<void> => {
+    try {
+        AsyncStorage.setItem(EXCEPTION_KEY, JSON.stringify(except));
+    } catch(e) {
+        console.log('Ошибка сохранения сокращённых дней: ', e);
+    }
 }

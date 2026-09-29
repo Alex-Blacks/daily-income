@@ -12,7 +12,11 @@ export const SCHEDULE_HINTS: Record<ScheduleMonth, string> = {
     'Свой': 'Выберите рабочие дни вручную',
 };
 
-export type ShortDay = { dayOfWeek: number, shortByMinutes: number };
+export type ShortDay = { 
+    dayOfWeek: number, 
+    shortByMinutes: number,
+    effectiveFrom: string,
+};
 
 export const toKey = (d:Date):string => {
     const y = d.getFullYear();

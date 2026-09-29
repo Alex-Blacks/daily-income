@@ -106,7 +106,7 @@ export function AppProvider({ children }: { children:ReactNode }) {
         const { minutesPerDay } = settings;
         const exc = exception.find(f => f.date === dateStr)?.minutes || 0;
 
-        const result = isScheduledWorkDay(dateStr) ? minutesPerDay - exc : 0;
+        const result = isScheduledWorkDay(dateStr) ? Math.max(0, minutesPerDay - exc) : 0;
         return result;
     }
 
